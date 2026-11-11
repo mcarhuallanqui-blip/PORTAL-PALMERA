@@ -1080,7 +1080,7 @@ let pending=null, pendingFact=null;
 /* ---------- Sincronizar desde el Excel de OneDrive (Microsoft 365, solo lectura) ---------- */
 const OD={server:"Microsoft 365",tool:"read_resource",uri:"file:///b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB/015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",name:"Facturación_Palmera_Octubre.xlsx"};
 /* ---------- Microsoft Graph API (funciona fuera de Claude también) ---------- */
-const GD={drive:"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB",item:"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||""}};
+const GD={drive:"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB",item:"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||"8ab78026-b9f7-4b77-ae38-f0e7c2d0352b"}};
 let msalApp=null;
 async function getMSAL(){
   if(!GD.clientId||typeof msal==="undefined")return null;
