@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@azure/msal-browser@3.26.1/lib/msal-browser.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js"></script>
 <style>
@@ -658,7 +659,7 @@ function viewConsulta(){
   const opt=k=>optsFor(CONS.find(f=>f.k===k),"").filter(Boolean).map(e=>`<option>${esc(e)}</option>`).join("");
   return filtersHTML()+`<div class="panel">
     <div class="atn-bar" role="group" aria-label="Filtrar por atención">${atns.map(a=>`<button class="atn" data-atn="${esc(a)}" aria-pressed="${state.f.atn===a}">${a||"Todas"}<b>${a?cnt(a):base.length}</b></button>`).join("")}
-      <span style="flex:1"></span>${(state.area==="owner"||state.area==="full")&&state.mcp?'<button class="btn primary sm" id="odSync">↻ Actualizar desde Excel</button>':""}${(state.area==="owner"||state.area==="full")?'<button class="btn sm" id="odPush" title="Genera el Excel actualizado para subir a OneDrive/SharePoint">↑ Exportar a Excel</button>':""}<button class="btn sm" id="dlSel" ${rows.length?"":"disabled"}>Descargar ${sel.length?"seleccionadas":"vista"} (.xlsx)</button><button class="btn sm" id="dlBackup">Respaldo completo</button></div>
+      <span style="flex:1"></span>${(state.area==="owner"||state.area==="full")&&state.mcp?'<button class="btn primary sm" id="odSync">↻ Actualizar desde Excel</button>':""}${(state.area==="owner"||state.area==="full")&&!state.mcp&&GD.clientId?'<button class="btn primary sm" id="gdSync">↻ OneDrive</button><button class="btn sm" id="gdPush" title="Guarda cambios del portal en el Excel de OneDrive">↑ Guardar en OneDrive</button>':""}${(state.area==="owner"||state.area==="full")&&!state.mcp&&!GD.clientId?'<button class="btn sm" id="gdConfig" title="Conectar con Microsoft 365 / OneDrive">🔗 Conectar OneDrive</button>':""}${(state.area==="owner"||state.area==="full")?'<button class="btn sm" id="odPush" title="Descarga Excel actualizado para subir manualmente a OneDrive">↑ Exportar a Excel</button>':""}<button class="btn sm" id="dlSel" ${rows.length?"":"disabled"}>Descargar ${sel.length?"seleccionadas":"vista"} (.xlsx)</button><button class="btn sm" id="dlBackup">Respaldo completo</button></div>
     ${sel.length?`<div class="toolbar selbar"><b>${sel.length} seleccionada${sel.length>1?"s":""}</b>
         ${w?`<select id="bulkTT" class="btn sm" aria-label="Cambiar Status TT"><option value="">Cambiar Status TT…</option>${opt("statusTT")}</select>
         <select id="bulkCorreo" class="btn sm" aria-label="Cambiar correo enviado a operaciones"><option value="">Correo env. operaciones…</option>${opt("correoOp")}</select>
@@ -1078,6 +1079,101 @@ function matchEstado(v){const n=norm(v);if(!n)return null;if(n.startsWith("fact"
 let pending=null, pendingFact=null;
 /* ---------- Sincronizar desde el Excel de OneDrive (Microsoft 365, solo lectura) ---------- */
 const OD={server:"Microsoft 365",tool:"read_resource",uri:"file:///b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB/015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",name:"Facturación_Palmera_Octubre.xlsx"};
+/* ---------- Microsoft Graph API (funciona fuera de Claude también) ---------- */
+const GD={drive:"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB",item:"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||""}};
+let msalApp=null;
+async function getMSAL(){
+  if(!GD.clientId||typeof msal==="undefined")return null;
+  if(msalApp)return msalApp;
+  msalApp=new msal.PublicClientApplication({auth:{clientId:GD.clientId,authority:"https://login.microsoftonline.com/"+GD.tenant,redirectUri:location.origin+location.pathname},cache:{cacheLocation:"sessionStorage"}});
+  await msalApp.initialize();
+  await msalApp.handleRedirectPromise().catch(()=>null);
+  return msalApp;
+}
+async function getGraphToken(){
+  const app=await getMSAL();if(!app)return null;
+  const acc=app.getAllAccounts();
+  if(!acc.length){await app.loginRedirect({scopes:["Files.ReadWrite","offline_access"]});return null}
+  const r=await app.acquireTokenSilent({scopes:["Files.ReadWrite","offline_access"],account:acc[0]}).catch(async e=>{
+    if(e.name==="InteractionRequiredAuthError")return app.acquireTokenPopup({scopes:["Files.ReadWrite"]}).catch(()=>null);
+    return null;
+  });
+  return r&&r.accessToken;
+}
+async function gdMsalUser(){const app=await getMSAL();if(!app)return null;const acc=app.getAllAccounts();return acc.length?acc[0]:null}
+async function gdLogout(){const app=await getMSAL();if(app){const acc=app.getAllAccounts();if(acc.length)await app.logoutPopup({account:acc[0]}).catch(()=>{})}msalApp=null;render()}
+function xlsxSheet(wb,name){const ws=wb.Sheets[name];if(!ws)return[];return XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:"yyyy-mm-dd"}).map(r=>r.join("\t"))}
+async function graphFetch(path,opts){
+  const tok=await getGraphToken();if(!tok)return null;
+  return fetch("https://graph.microsoft.com/v1.0"+path,{...opts,headers:{Authorization:"Bearer "+tok,...((opts&&opts.headers)||{})}});
+}
+async function graphSync(btn){
+  const b=btn||{disabled:false,textContent:"↻"};
+  if(!GD.clientId){gdShowConfig();return}
+  b.disabled=true;const lbl=b.textContent;b.textContent="Leyendo Excel…";
+  try{
+    const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content");
+    if(!resp)return;
+    if(!resp.ok)throw new Error("HTTP "+resp.status);
+    const buf=await resp.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array"});
+    const cons=xlsxSheet(wb,"CONSOLIDADO"),fact=xlsxSheet(wb,"FACTURA");
+    if(!cons.length){toast("CONSOLIDADO vacío en el Excel");return}
+    const ocList=odParseCons(cons),facList=odParseFact(fact);
+    odPending={ocs:ocList,facts:facList};odReview();render();
+  }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
+  finally{b.disabled=false;b.textContent=lbl}
+}
+async function graphPush(){
+  const tok=await getGraphToken();if(!tok){toast("Inicia sesión con Microsoft primero");return}
+  try{
+    const wb=XLSX.utils.book_new();
+    const ocs=state.ocs.slice().sort((a,b)=>(a.emision||"")>(b.emision||"")?1:-1);
+    const cons=ocs.map(o=>{const r=consRows([o])[0];const c=C(o);r["FECHA EMISIÓN"]=xDate(c.emisionFac);r["VENCIMIENTO FACTURA"]=xDate(c.vencFac);r["VENCIMIENTO PORTAL"]=xDate(c.vencPortal);r["Fec. Emision"]=xDate(o.emision);r["Fec. Entrega"]=xDate(o.entrega);r["Fec. Vencimto."]=xDate(c.vencOC);const n=Number(r["Nro O/C"]);if(/^\d+$/.test(r["Nro O/C"])&&n<1e12)r["Nro O/C"]=n;return r});
+    const ws1=XLSX.utils.aoa_to_sheet([[]]);XLSX.utils.sheet_add_json(ws1,cons,{origin:"B2"});fmtDates(ws1);
+    ws1["!cols"]=[{wch:2},...Object.keys(cons[0]||{"x":1}).map(k=>({wch:Math.max(11,k.length+2)}))];XLSX.utils.book_append_sheet(wb,ws1,"CONSOLIDADO");
+    const fr=factRows().map(r=>Object.fromEntries(FCOLS.map(([k,l,t])=>[l,t==="d"?xDate(r[k]):(k==="oc"&&/^\d+$/.test(r[k])?Number(r[k]):(r[k]??""))])));
+    const ws2=XLSX.utils.aoa_to_sheet([[]]);XLSX.utils.sheet_add_json(ws2,fr.length?fr:[Object.fromEntries(FCOLS.map(([k,l])=>[l,""]))],{origin:"B2"});fmtDates(ws2);
+    ws2["!cols"]=[{wch:2},...FCOLS.map(([k,l])=>({wch:k==="producto"?50:Math.max(12,l.length+2)}))];XLSX.utils.book_append_sheet(wb,ws2,"FACTURA");
+    const td=XLSX.utils.aoa_to_sheet(tdAOA(factRows()));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
+    const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
+    const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content",{method:"PUT",headers:{"Content-Type":"application/octet-stream"},body:new Uint8Array(buf)});
+    if(!resp||!resp.ok)throw new Error("HTTP "+(resp&&resp.status));
+    toast("Excel actualizado en OneDrive ✓");
+  }catch(e){toast("Error actualizando OneDrive: "+(e.message||e))}
+}
+function gdShowConfig(){
+  const cur=GD.clientId;
+  $("#modal").innerHTML=`<div class="modal-card" style="width:min(580px,100%)">
+    <h2>Conectar con Microsoft 365 / OneDrive</h2>
+    <p style="color:var(--ink-2);margin-bottom:12px">Registra una app en Azure para que el portal lea y escriba en el Excel de OneDrive directamente, sin necesidad de Claude.</p>
+    <div style="background:var(--surface-2,#f5f5f5);border-radius:8px;padding:12px 16px;font-size:13px;line-height:1.6;margin-bottom:14px">
+      <b>Pasos (1 sola vez):</b><br>
+      1. Ve a <a href="https://portal.azure.com" target="_blank" rel="noopener">portal.azure.com</a> → Azure Active Directory → App registrations → <b>+ New registration</b><br>
+      2. Nombre: "Portal Palmera" · Redirect URI (SPA): <code style="background:#e8e8e8;padding:1px 4px;border-radius:3px">${location.origin+location.pathname}</code><br>
+      3. En <b>API permissions</b> agrega: <code style="background:#e8e8e8;padding:1px 4px;border-radius:3px">Files.ReadWrite</code> (Microsoft Graph · Delegated)<br>
+      4. En <b>Authentication</b> activa "Allow public client flows"<br>
+      5. Copia el <b>Application (client) ID</b> y pégalo abajo
+    </div>
+    <div class="field"><label>Application (Client) ID</label><input id="gdCid" type="text" value="${esc(cur)}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font-family:monospace;font-size:13px"></div>
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
+      ${cur?'<button class="btn danger" id="gdCidClear">Desconectar</button>':''}
+      <span style="flex:1"></span>
+      <button class="btn" id="gdCidCancel">Cancelar</button>
+      <button class="btn primary" id="gdCidSave">Guardar y conectar</button>
+    </div>
+  </div>`;
+  $("#modal").classList.add("open");
+  $("#gdCidCancel").onclick=()=>$("#modal").classList.remove("open");
+  if(cur)$("#gdCidClear").onclick=()=>{localStorage.removeItem("palmera-msal-cid");msalApp=null;$("#modal").classList.remove("open");render();toast("OneDrive desconectado")};
+  $("#gdCidSave").onclick=async()=>{
+    const cid=$("#gdCid").value.trim();
+    if(cid&&!/^[0-9a-fA-F\-]{36}$/.test(cid)){toast("El Client ID debe ser un UUID válido");return}
+    localStorage.setItem("palmera-msal-cid",cid);msalApp=null;
+    $("#modal").classList.remove("open");render();
+    if(cid){toast("Client ID guardado · iniciando sesión con Microsoft…");setTimeout(()=>graphSync({disabled:false,textContent:"↻"}).catch(()=>{}),300)}
+  };
+}
 const MES_ES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
 function odNum(v){let s=String(v??"").replace(/S\/|\s| /g,"");if(!s||s==="-")return null;if(/,/.test(s))s=s.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");const n=Number(s);return isNaN(n)?null:n}
 function odDate(v,ref){const s=String(v??"").trim();let m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
@@ -1410,6 +1506,9 @@ document.addEventListener("click",async e=>{
   if(t.id==="dlCob"){dlCobranza();return}
   if(t.id==="odSync"){odSync(t);return}
   if(t.id==="odPush"){odPush();return}
+  if(t.id==="gdSync"){graphSync(t);return}
+  if(t.id==="gdPush"){graphPush();return}
+  if(t.id==="gdConfig"){gdShowConfig();return}
   if(t.id==="acAdd"){const em=$("#acEmail").value.trim().toLowerCase();if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(em)){toast("Escribe un correo válido");return}
     if(state.accesos.some(x=>(x.email||"")===em)){toast("Ese correo ya está en la lista");return}await saveAccesos([...state.accesos,{email:em,area:$("#acArea").value}]);return}
   const acr=t.closest("[data-acrm]"); if(acr){const i=Number(acr.dataset.acrm);if(!(await askConfirm("¿Quitar este acceso?","La persona dejará de ver el portal (si además la quitas de Compartir).","Quitar")))return;const it=state.accesos.slice();it.splice(i,1);await saveAccesos(it);return}
@@ -1498,6 +1597,21 @@ state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact
     },err=>{setSync(false,"Sin conexión ("+err.code+")")});
   }else{
     setSync(false,"Guardado solo en este navegador");
+  }
+  setTimeout(()=>{
+    if(state.mcp&&(state.area==="owner"||state.area==="full")&&!state.ocs.length){
+      toast("Cargando datos desde el Excel de OneDrive…");
+      odSync({disabled:false,textContent:"↻"}).catch(()=>{});
+    }
+  },2000);
+  if(!state.mcp&&GD.clientId){
+    getMSAL().then(app=>{
+      if(!app)return;
+      const acc=app.getAllAccounts();
+      if(acc.length&&(state.area==="owner"||state.area==="full")&&!state.ocs.length){
+        setTimeout(()=>{toast("Cargando datos desde OneDrive…");graphSync({disabled:false,textContent:"↻"}).catch(()=>{})},1000);
+      }
+    }).catch(()=>{});
   }
 })();
 })();
