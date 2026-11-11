@@ -1093,9 +1093,13 @@ async function getMSAL(){
 async function getGraphToken(){
   const app=await getMSAL();if(!app)return null;
   const acc=app.getAllAccounts();
-  if(!acc.length){await app.loginRedirect({scopes:["Files.ReadWrite","offline_access"]});return null}
-  const r=await app.acquireTokenSilent({scopes:["Files.ReadWrite","offline_access"],account:acc[0]}).catch(async e=>{
-    if(e.name==="InteractionRequiredAuthError")return app.acquireTokenPopup({scopes:["Files.ReadWrite"]}).catch(()=>null);
+  if(!acc.length){
+    const res=await app.loginPopup({scopes:["Files.ReadWrite","Files.ReadWrite.All","offline_access"]}).catch(()=>null);
+    if(!res)return null;
+    return res.accessToken;
+  }
+  const r=await app.acquireTokenSilent({scopes:["Files.ReadWrite","Files.ReadWrite.All","offline_access"],account:acc[0]}).catch(async e=>{
+    if(e.name==="InteractionRequiredAuthError")return app.acquireTokenPopup({scopes:["Files.ReadWrite","Files.ReadWrite.All"]}).catch(()=>null);
     return null;
   });
   return r&&r.accessToken;
