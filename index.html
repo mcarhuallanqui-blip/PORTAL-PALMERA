@@ -1080,7 +1080,7 @@ let pending=null, pendingFact=null;
 /* ---------- Sincronizar desde el Excel de OneDrive (Microsoft 365, solo lectura) ---------- */
 const OD={server:"Microsoft 365",tool:"read_resource",uri:"file:///b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB/015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",name:"Facturación_Palmera_Octubre.xlsx"};
 /* ---------- Microsoft Graph API (funciona fuera de Claude también) ---------- */
-const GD={drive:"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB",item:"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||"8ab78026-b9f7-4b77-ae38-f0e7c2d0352b"}};
+const GD={get drive(){return localStorage.getItem("palmera-gd-drive")||"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB"},get item(){return localStorage.getItem("palmera-gd-item")||"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6"},get shareUrl(){return localStorage.getItem("palmera-share-url")||""},tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||"8ab78026-b9f7-4b77-ae38-f0e7c2d0352b"}};
 let msalApp=null;
 async function getMSAL(){
   if(!GD.clientId||typeof msal==="undefined")return null;
@@ -1111,11 +1111,26 @@ async function graphFetch(path,opts){
   const tok=await getGraphToken();if(!tok)return null;
   return fetch("https://graph.microsoft.com/v1.0"+path,{...opts,headers:{Authorization:"Bearer "+tok,...((opts&&opts.headers)||{})}});
 }
+async function resolveShareUrl(url){
+  try{const b64=btoa(url).replace(/=/g,"").replace(/\+/g,"-").replace(/\//g,"_");
+  const shareId="u!"+b64;const tok=await getGraphToken();if(!tok)return false;
+  const resp=await fetch("https://graph.microsoft.com/v1.0/shares/"+shareId+"/driveItem",{headers:{Authorization:"Bearer "+tok}});
+  if(!resp.ok){toast("Error resolviendo URL: HTTP "+resp.status);return false}
+  const d=await resp.json();
+  localStorage.setItem("palmera-gd-drive",d.parentReference.driveId);
+  localStorage.setItem("palmera-gd-item",d.id);
+  return true}catch(e){toast("Error resolviendo URL: "+(e.message||e));return false}
+}
 async function graphSync(btn){
   const b=btn||{disabled:false,textContent:"↻"};
   if(!GD.clientId){gdShowConfig();return}
   b.disabled=true;const lbl=b.textContent;b.textContent="Leyendo Excel…";
   try{
+    if(GD.shareUrl&&!localStorage.getItem("palmera-gd-drive")){
+      b.textContent="Resolviendo URL…";
+      const ok=await resolveShareUrl(GD.shareUrl);if(!ok)return;
+      b.textContent="Leyendo Excel…";
+    }
     const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content");
     if(!resp)return;
     if(!resp.ok)throw new Error("HTTP "+resp.status);
@@ -1146,19 +1161,17 @@ async function graphPush(){
   }catch(e){toast("Error actualizando OneDrive: "+(e.message||e))}
 }
 function gdShowConfig(){
-  const cur=GD.clientId;
+  const cur=GD.clientId;const curUrl=GD.shareUrl;
   $("#modal").innerHTML=`<div class="modal-card" style="width:min(580px,100%)">
     <h2>Conectar con Microsoft 365 / OneDrive</h2>
-    <p style="color:var(--ink-2);margin-bottom:12px">Registra una app en Azure para que el portal lea y escriba en el Excel de OneDrive directamente, sin necesidad de Claude.</p>
-    <div style="background:var(--surface-2,#f5f5f5);border-radius:8px;padding:12px 16px;font-size:13px;line-height:1.6;margin-bottom:14px">
-      <b>Pasos (1 sola vez):</b><br>
-      1. Ve a <a href="https://portal.azure.com" target="_blank" rel="noopener">portal.azure.com</a> → Azure Active Directory → App registrations → <b>+ New registration</b><br>
-      2. Nombre: "Portal Palmera" · Redirect URI (SPA): <code style="background:#e8e8e8;padding:1px 4px;border-radius:3px">${location.origin+location.pathname}</code><br>
-      3. En <b>API permissions</b> agrega: <code style="background:#e8e8e8;padding:1px 4px;border-radius:3px">Files.ReadWrite</code> (Microsoft Graph · Delegated)<br>
-      4. En <b>Authentication</b> activa "Allow public client flows"<br>
-      5. Copia el <b>Application (client) ID</b> y pégalo abajo
+    <p style="color:var(--ink-2);margin-bottom:12px">Pega el link de compartido del Excel de OneDrive y el Client ID de Azure para sincronizar automáticamente.</p>
+    <div class="field" style="margin-bottom:12px"><label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">Link de SharePoint del Excel</label>
+      <input id="gdShareUrl" type="text" value="${esc(curUrl)}" placeholder="https://ttauditperu-my.sharepoint.com/:x:/g/personal/..." style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font-size:12px;font-family:monospace">
+      <span style="font-size:11px;color:var(--ink-3)">Pega el link "Copiar vínculo" del Excel en OneDrive</span>
     </div>
-    <div class="field"><label>Application (Client) ID</label><input id="gdCid" type="text" value="${esc(cur)}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font-family:monospace;font-size:13px"></div>
+    <div class="field" style="margin-bottom:12px"><label style="font-weight:600;font-size:13px;display:block;margin-bottom:4px">Application (Client) ID</label>
+      <input id="gdCid" type="text" value="${esc(cur)}" placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" style="width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:6px;font-family:monospace;font-size:13px">
+    </div>
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap">
       ${cur?'<button class="btn danger" id="gdCidClear">Desconectar</button>':''}
       <span style="flex:1"></span>
@@ -1168,13 +1181,21 @@ function gdShowConfig(){
   </div>`;
   $("#modal").classList.add("open");
   $("#gdCidCancel").onclick=()=>$("#modal").classList.remove("open");
-  if(cur)$("#gdCidClear").onclick=()=>{localStorage.removeItem("palmera-msal-cid");msalApp=null;$("#modal").classList.remove("open");render();toast("OneDrive desconectado")};
+  if(cur)$("#gdCidClear").onclick=()=>{
+    localStorage.removeItem("palmera-msal-cid");localStorage.removeItem("palmera-share-url");
+    localStorage.removeItem("palmera-gd-drive");localStorage.removeItem("palmera-gd-item");
+    msalApp=null;$("#modal").classList.remove("open");render();toast("OneDrive desconectado")};
   $("#gdCidSave").onclick=async()=>{
     const cid=$("#gdCid").value.trim();
+    const shareUrl=$("#gdShareUrl").value.trim();
     if(cid&&!/^[0-9a-fA-F\-]{36}$/.test(cid)){toast("El Client ID debe ser un UUID válido");return}
     localStorage.setItem("palmera-msal-cid",cid);msalApp=null;
+    if(shareUrl!==curUrl){
+      localStorage.setItem("palmera-share-url",shareUrl);
+      localStorage.removeItem("palmera-gd-drive");localStorage.removeItem("palmera-gd-item");
+    }
     $("#modal").classList.remove("open");render();
-    if(cid){toast("Client ID guardado · iniciando sesión con Microsoft…");setTimeout(()=>graphSync({disabled:false,textContent:"↻"}).catch(()=>{}),300)}
+    if(cid){toast("Configuración guardada · iniciando sesión con Microsoft…");setTimeout(()=>graphSync({disabled:false,textContent:"↻"}).catch(()=>{}),300)}
   };
 }
 const MES_ES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
