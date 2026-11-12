@@ -1121,7 +1121,7 @@ async function graphSync(btn){
     if(!resp.ok)throw new Error("HTTP "+resp.status);
     const buf=await resp.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array"});
-    const cons=xlsxSheet(wb,"CONSOLIDADO"),fact=xlsxSheet(wb,"FACTURA");
+    const cons=xlsxSheet(wb,wb.SheetNames[0]),fact=xlsxSheet(wb,wb.SheetNames[1]);
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
