@@ -1228,8 +1228,7 @@ function odShowReview(exs,facs){
    ${upd.length?`<div class="section-t">${upd.length} OC con cambios</div><div class="table-wrap" style="max-height:260px;overflow:auto"><table><thead><tr><th>OC</th><th>Cambio</th></tr></thead><tbody>${upd.map(u=>`<tr><td class="ocnum">${esc(numV(u.p))}</td><td style="white-space:normal">${u.ch.map(k=>{const a=k in u.x.cons?C(u.p)[k]:u.p[k],b=k in u.x.cons?u.x.cons[k]:u.x[k];return `<b>${lab(k)}</b>: ${vv(a)} → ${vv(b)}`}).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:""}
    ${nue.length?`<div class="section-t">${nue.length} OC nuevas</div><p style="margin:0">${nue.map(x=>`<b>${esc(numV(x))}</b> (${esc(x.cadena)}, ${esc(x.cons.atencion)})`).join(" · ")}</p>`:""}
    ${fNew.length?`<div class="section-t">${fNew.length} líneas nuevas en FACTURA</div><p style="margin:0">${[...new Set(fNew.map(r=>r.factura))].map(esc).join(" · ")}</p>`:""}
-   ${solo.length?`<div class="section-t">${solo.length} OC están en el portal pero no en el Excel</div><p class="muted" style="margin:0 0 6px">Marca las que quieres eliminar del portal (por ejemplo, si cambiaste el número en el Excel). Las demás se quedan.</p>
-     ${solo.map((o,i)=>`<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-odsolo="${i}"> <b>${esc(numV(o))}</b> <span class="muted">${esc(o.cadena)} · ${esc(C(o).atencion)} · ${money(totalOC(o))}</span></label>`).join("")}`:""}
+   ${solo.length?`<div class="section-t">${solo.length} OC se eliminarán (están en el portal pero no en el Excel)</div><p class="muted" style="margin:0 0 6px">El Excel es la fuente definitiva — estas OC se quitarán del portal.</p><p style="margin:0">${solo.map(o=>`<b>${esc(numV(o))}</b> (${esc(o.cadena)}, ${esc(C(o).atencion)})`).join(" · ")}</p>`:""}
    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px"><button class="btn" id="odCancel">Cancelar</button>${upd.length||nue.length||solo.length||fNew.length?'<button class="btn primary" id="odApply">Aplicar cambios</button>':""}</div></div>`;
   $("#modal").classList.add("open");
   $("#odCancel").onclick=()=>{$("#modal").classList.remove("open");odPending=null};
@@ -1256,7 +1255,7 @@ async function odApply(){
     for(const x of P.nue){const its=factRows().filter(r=>r.oc===String(x.numero).replace(/-proyectado$/,"")).map(r=>({sku:"",descripcion:r.producto,cantidad:r.cantidad,precio:r.precioSinIGV}));
       const u=x.cons.unidadesOC,t=x.cons.totalOC;
       await saveOC({...x,items:its.length&&x.cons.atencion==="ATENDIDO"?its:[{sku:"",descripcion:"Total según OC (sin detalle de productos)",cantidad:u,precio:u?Math.round(t/u*10000)/10000:t}],origen:"Excel OneDrive",historial:[{fecha:now,txt:"Creada desde Excel OneDrive"}]});n++}
-    const del=[...document.querySelectorAll("[data-odsolo]:checked")].map(c=>P.solo[Number(c.dataset.odsolo)]);
+    const del=P.solo;
     for(const o of del){await deleteOC(o.id);n++}
     if(P.fNew.length){const f=state.fact?{...state.fact}:{rows:[],fuente:"Excel OneDrive"};f.rows=[...(f.rows||[]),...P.fNew];f.actualizado=now;await saveFact(f)}
     $("#modal").classList.remove("open");odPending=null;toast(`Listo: ${P.upd.length} actualizadas, ${P.nue.length} nuevas, ${del.length} eliminadas, ${P.fNew.length} líneas FACTURA`);
