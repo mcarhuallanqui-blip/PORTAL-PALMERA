@@ -1122,9 +1122,8 @@ async function graphSync(btn){
     const buf=await resp.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array"});
     const cons=xlsxSheet(wb,"CONSOLIDADO"),fact=xlsxSheet(wb,"FACTURA");
-    if(!cons.length){toast("CONSOLIDADO vacío en el Excel");return}
     const ocList=odParseCons(cons),facList=odParseFact(fact);
-    odPending={ocs:ocList,facts:facList};odReview();render();
+    odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
   finally{b.disabled=false;b.textContent=lbl}
 }
@@ -1211,6 +1210,31 @@ function odParseFact(rows){
     ["entrega","fechaOC","emisionFac","vencFac"].forEach(k=>o[k]=odDate(g(k)));["cantidad","costo","costoTTA","precioVenta","precioSinIGV","totalIGV","utilidad","margen","facturacion"].forEach(k=>o[k]=odNum(g(k)));
     if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}))}}
     out.push(o)});return out}
+function odShowReview(exs,facs){
+  if(!exs.length){toast("CONSOLIDADO vacío en el Excel");return}
+  const F=["atencion","completo","factSi","statusTT","correoOp","correoGR","nc","portalPago","pago","emisionFac","vencFac","vencPortal","vencOC","totalOC","unidadesOC"];
+  const eq=(a,b)=>typeof a==="number"||typeof b==="number"?Math.abs((Number(a)||0)-(Number(b)||0))<0.005:String(a??"")===String(b??"");
+  const upd=[],nue=[];
+  exs.forEach(x=>{const p=state.ocs.find(o=>o.id===x.id);if(!p){nue.push(x);return}const c=C(p);
+    const ch=F.filter(k=>!eq(c[k],x.cons[k])).concat(["factura","local","emision","entrega"].filter(k=>!eq(p[k],x[k])));if(ch.length)upd.push({x,p,ch})});
+  const ids=new Set(exs.map(x=>x.id));const solo=state.ocs.filter(o=>!ids.has(o.id));
+  const have=new Set(factRows().map(r=>r.factura+"|"+r.producto+"|"+r.cantidad));const fNew=facs.filter(r=>r.factura&&!have.has(r.factura+"|"+r.producto+"|"+r.cantidad));
+  odPending={upd,nue,solo,fNew};
+  const lab=k=>({atencion:"Atención",completo:"Completo",factSi:"Factura",statusTT:"Status TT",correoOp:"Correo op.",correoGR:"Correo GR",nc:"NC",portalPago:"Portal pago",pago:"Pagado/vencido",emisionFac:"Emisión fact.",vencFac:"Venc. factura",vencPortal:"Venc. portal",vencOC:"Fec. vencimto.",totalOC:"Total OC",unidadesOC:"Unidades",factura:"Factura N°",local:"Detalle canal",emision:"Fec. emisión",entrega:"Fec. entrega"}[k]||k);
+  const vv=v=>v===""||v==null?"(vacío)":esc(v);
+  $("#modal").innerHTML=`<div class="modal-card" style="width:min(860px,100%)"><h2 id="modalTitle">Actualizar desde Excel</h2>
+   <p class="muted" style="margin:-8px 0 12px">${exs.length} OC y ${facs.length} líneas FACTURA leídas. El Excel manda; se conservan Obs, citas, documentos e historial del portal.</p>
+   ${!upd.length&&!nue.length&&!solo.length&&!fNew.length?'<div class="ok-note">El portal ya está igual al Excel. No hay nada que actualizar.</div>':""}
+   ${upd.length?`<div class="section-t">${upd.length} OC con cambios</div><div class="table-wrap" style="max-height:260px;overflow:auto"><table><thead><tr><th>OC</th><th>Cambio</th></tr></thead><tbody>${upd.map(u=>`<tr><td class="ocnum">${esc(numV(u.p))}</td><td style="white-space:normal">${u.ch.map(k=>{const a=k in u.x.cons?C(u.p)[k]:u.p[k],b=k in u.x.cons?u.x.cons[k]:u.x[k];return `<b>${lab(k)}</b>: ${vv(a)} → ${vv(b)}`}).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:""}
+   ${nue.length?`<div class="section-t">${nue.length} OC nuevas</div><p style="margin:0">${nue.map(x=>`<b>${esc(numV(x))}</b> (${esc(x.cadena)}, ${esc(x.cons.atencion)})`).join(" · ")}</p>`:""}
+   ${fNew.length?`<div class="section-t">${fNew.length} líneas nuevas en FACTURA</div><p style="margin:0">${[...new Set(fNew.map(r=>r.factura))].map(esc).join(" · ")}</p>`:""}
+   ${solo.length?`<div class="section-t">${solo.length} OC están en el portal pero no en el Excel</div><p class="muted" style="margin:0 0 6px">Marca las que quieres eliminar del portal (por ejemplo, si cambiaste el número en el Excel). Las demás se quedan.</p>
+     ${solo.map((o,i)=>`<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-odsolo="${i}"> <b>${esc(numV(o))}</b> <span class="muted">${esc(o.cadena)} · ${esc(C(o).atencion)} · ${money(totalOC(o))}</span></label>`).join("")}`:""}
+   <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px"><button class="btn" id="odCancel">Cancelar</button>${upd.length||nue.length||solo.length||fNew.length?'<button class="btn primary" id="odApply">Aplicar cambios</button>':""}</div></div>`;
+  $("#modal").classList.add("open");
+  $("#odCancel").onclick=()=>{$("#modal").classList.remove("open");odPending=null};
+  if($("#odApply"))$("#odApply").onclick=odApply;
+}
 let odPending=null;
 async function odSync(btn){
   if(!state.mcp){toast("Esta vista no puede usar Microsoft 365");return}
@@ -1219,28 +1243,7 @@ async function odSync(btn){
     const t1=await odRead(1), t2=await odRead(2);
     const exs=odParseCons(odSheet(t1)), facs=odParseFact(odSheet(t2));
     if(!exs.length)throw new Error("No encontré filas en la hoja CONSOLIDADO del Excel.");
-    const F=["atencion","completo","factSi","statusTT","correoOp","correoGR","nc","portalPago","pago","emisionFac","vencFac","vencPortal","vencOC","totalOC","unidadesOC"];
-    const eq=(a,b)=>typeof a==="number"||typeof b==="number"?Math.abs((Number(a)||0)-(Number(b)||0))<0.005:String(a??"")===String(b??"");
-    const upd=[],nue=[];
-    exs.forEach(x=>{const p=state.ocs.find(o=>o.id===x.id);if(!p){nue.push(x);return}const c=C(p);
-      const ch=F.filter(k=>!eq(c[k],x.cons[k])).concat(["factura","local","emision","entrega"].filter(k=>!eq(p[k],x[k])));if(ch.length)upd.push({x,p,ch})});
-    const ids=new Set(exs.map(x=>x.id));const solo=state.ocs.filter(o=>!ids.has(o.id));
-    const have=new Set(factRows().map(r=>r.factura+"|"+r.producto+"|"+r.cantidad));const fNew=facs.filter(r=>r.factura&&!have.has(r.factura+"|"+r.producto+"|"+r.cantidad));
-    odPending={upd,nue,solo,fNew};
-    const lab=k=>({atencion:"Atención",completo:"Completo",factSi:"Factura",statusTT:"Status TT",correoOp:"Correo op.",correoGR:"Correo GR",nc:"NC",portalPago:"Portal pago",pago:"Pagado/vencido",emisionFac:"Emisión fact.",vencFac:"Venc. factura",vencPortal:"Venc. portal",vencOC:"Fec. vencimto.",totalOC:"Total OC",unidadesOC:"Unidades",factura:"Factura N°",local:"Detalle canal",emision:"Fec. emisión",entrega:"Fec. entrega"}[k]||k);
-    const vv=v=>v===""||v==null?"(vacío)":esc(v);
-    $("#modal").innerHTML=`<div class="modal-card" style="width:min(860px,100%)"><h2 id="modalTitle">Actualizar desde Excel</h2>
-     <p class="muted" style="margin:-8px 0 12px">${esc(OD.name)} · OneDrive · ${exs.length} OC y ${facs.length} líneas FACTURA leídas. El Excel manda; se conservan Obs, citas, documentos e historial del portal.</p>
-     ${!upd.length&&!nue.length&&!solo.length&&!fNew.length?'<div class="ok-note">El portal ya está igual al Excel. No hay nada que actualizar.</div>':""}
-     ${upd.length?`<div class="section-t">${upd.length} OC con cambios</div><div class="table-wrap" style="max-height:260px;overflow:auto"><table><thead><tr><th>OC</th><th>Cambio</th></tr></thead><tbody>${upd.map(u=>`<tr><td class="ocnum">${esc(numV(u.p))}</td><td style="white-space:normal">${u.ch.map(k=>{const a=k in u.x.cons?C(u.p)[k]:u.p[k],b=k in u.x.cons?u.x.cons[k]:u.x[k];return `<b>${lab(k)}</b>: ${vv(a)} → ${vv(b)}`}).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:""}
-     ${nue.length?`<div class="section-t">${nue.length} OC nuevas</div><p style="margin:0">${nue.map(x=>`<b>${esc(numV(x))}</b> (${esc(x.cadena)}, ${esc(x.cons.atencion)})`).join(" · ")}</p>`:""}
-     ${fNew.length?`<div class="section-t">${fNew.length} líneas nuevas en FACTURA</div><p style="margin:0">${[...new Set(fNew.map(r=>r.factura))].map(esc).join(" · ")}</p>`:""}
-     ${solo.length?`<div class="section-t">${solo.length} OC están en el portal pero no en el Excel</div><p class="muted" style="margin:0 0 6px">Marca las que quieres eliminar del portal (por ejemplo, si cambiaste el número en el Excel). Las demás se quedan.</p>
-       ${solo.map((o,i)=>`<label style="display:flex;gap:8px;align-items:center;padding:3px 0"><input type="checkbox" data-odsolo="${i}"> <b>${esc(numV(o))}</b> <span class="muted">${esc(o.cadena)} · ${esc(C(o).atencion)} · ${money(totalOC(o))}</span></label>`).join("")}`:""}
-     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:18px"><button class="btn" id="odCancel">Cancelar</button>${upd.length||nue.length||solo.length||fNew.length?'<button class="btn primary" id="odApply">Aplicar cambios</button>':""}</div></div>`;
-    $("#modal").classList.add("open");
-    $("#odCancel").onclick=()=>{$("#modal").classList.remove("open");odPending=null};
-    if($("#odApply"))$("#odApply").onclick=odApply;
+    odShowReview(exs,facs);
   }catch(e){toast(e.message||String(e))}
   finally{btn.disabled=false;btn.textContent=lbl}
 }
