@@ -1237,8 +1237,28 @@ function odParseCons(rows){
     out.push({id:docId(cadena,numero),cadena,numero,local:odTxt(g(r,"local")),emision,entrega:odDate(g(r,"entrega")),estado:estadoOf(atn,factura),factura,cons})});
   return out}
 function odParseFact(rows){
-  if(!rows.length)return [];const H=rows[0].map(norm);const M={oc:"nrooc",canal:"canal",detalle:"detallecanal",factura:"factura",entrega:"fecentrega",fechaOC:"fechaoc",emisionFac:"fechaemisionfactura",vencFac:"vencimientofactura",producto:"producto",cantidad:"cantidad",costo:"costodelproducto",costoTTA:"costotta",precioVenta:"preciodeventa",precioSinIGV:"preciodeventasinigv",totalIGV:"totaligv",utilidad:"utilidadunitaria",margen:"margenretail",facturacion:"facturaciontotal"};
-  const out=[];rows.slice(1).forEach(r=>{const g=k=>{const i=H.indexOf(M[k]);return i<0?"":r[i]};const oc=odTxt(g("oc"));if(!/^\d/.test(oc)||!odTxt(g("producto")))return;
+  if(!rows.length)return [];const H=rows[0].map(norm);
+  const pick=(opts)=>{for(const o of opts){const i=H.indexOf(o);if(i>=0)return i}return -1};
+  const idx={
+    oc:pick(["nrooc","noc","oc","nrodeoc","nroorden","ordendecompra","numerodeoc"]),
+    canal:pick(["canal"]),detalle:pick(["detallecanal","detalle","descripcioncanal"]),
+    factura:pick(["factura","nrofactura","numerofactura","facturanro"]),
+    entrega:pick(["fecentrega","fechaentrega","entrega"]),
+    fechaOC:pick(["fechaoc","fechaorden","fechaemision"]),
+    emisionFac:pick(["fechaemisionfactura","emisionfactura","fechaemision"]),
+    vencFac:pick(["vencimientofactura","vencfactura","vencimiento"]),
+    producto:pick(["producto","descripcion","articulo","detalleproducto","nombreprod"]),
+    cantidad:pick(["cantidad","cant","unidades"]),
+    costo:pick(["costodelproducto","costo","costoprod"]),
+    costoTTA:pick(["costotta","costotta"]),
+    precioVenta:pick(["preciodeventa","precioventa","precio"]),
+    precioSinIGV:pick(["preciodeventasinigv","preciosinigv","precisionigv"]),
+    totalIGV:pick(["totaligv","igv"]),
+    utilidad:pick(["utilidadunitaria","utilidad"]),
+    margen:pick(["margenretail","margen"]),
+    facturacion:pick(["facturaciontotal","facturacion","total"])
+  };
+  const out=[];rows.slice(1).forEach(r=>{const g=k=>idx[k]>=0?r[idx[k]]:"";const oc=odTxt(g("oc"));if(!/^\d/.test(oc)||!odTxt(g("producto")))return;
     const o={oc,canal:odTxt(g("canal")).toUpperCase(),detalle:odTxt(g("detalle")),factura:odTxt(g("factura")).toUpperCase(),producto:odTxt(g("producto"))};
     ["entrega","fechaOC","emisionFac","vencFac"].forEach(k=>o[k]=odDate(g(k)));["cantidad","costo","costoTTA","precioVenta","precioSinIGV","totalIGV","utilidad","margen","facturacion"].forEach(k=>o[k]=odNum(g(k)));
     if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}))}}
