@@ -1119,6 +1119,7 @@ async function getGraphToken(){
 async function gdMsalUser(){const app=await getMSAL();if(!app)return null;const acc=app.getAllAccounts();return acc.length?acc[0]:null}
 async function gdLogout(){const app=await getMSAL();if(app){const acc=app.getAllAccounts();if(acc.length)await app.logoutPopup({account:acc[0]}).catch(()=>{})}msalApp=null;render()}
 function xlsxSheet(wb,name){const ws=wb.Sheets[name];if(!ws)return[];return XLSX.utils.sheet_to_json(ws,{header:1,raw:false,dateNF:"yyyy-mm-dd"})}
+function findSheetName(wb,aliases,fallbackIdx){const names=wb.SheetNames;for(const a of aliases){const n=norm(a);const f=names.find(s=>norm(s)===n);if(f)return f}return names[fallbackIdx]||names[0]}
 async function graphFetch(path,opts){
   const tok=await getGraphToken();if(!tok)return null;
   return fetch("https://graph.microsoft.com/v1.0"+path,{...opts,headers:{Authorization:"Bearer "+tok,...((opts&&opts.headers)||{})}});
@@ -1148,7 +1149,9 @@ async function graphSync(btn){
     if(!resp.ok)throw new Error("HTTP "+resp.status);
     const buf=await resp.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array"});
-    const cons=xlsxSheet(wb,wb.SheetNames[0]),fact=xlsxSheet(wb,wb.SheetNames[1]);
+    const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
+    const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
+    const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
