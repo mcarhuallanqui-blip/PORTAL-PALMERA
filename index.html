@@ -658,8 +658,20 @@ function viewConsulta(){
   const atns=["",...ATENCION]; const w=state.canWrite;
   const opt=k=>optsFor(CONS.find(f=>f.k===k),"").filter(Boolean).map(e=>`<option>${esc(e)}</option>`).join("");
   return filtersHTML()+`<div class="panel">
-    <div class="atn-bar" role="group" aria-label="Filtrar por atención">${atns.map(a=>`<button class="atn" data-atn="${esc(a)}" aria-pressed="${state.f.atn===a}">${a||"Todas"}<b>${a?cnt(a):base.length}</b></button>`).join("")}
-      <span style="flex:1"></span>${(state.area==="owner"||state.area==="full")&&state.mcp?'<button class="btn primary sm" id="odSync">↻ Actualizar desde Excel</button>':""}${(state.area==="owner"||state.area==="full")&&!state.mcp&&GD.clientId?'<button class="btn primary sm" id="gdSync">↻ OneDrive</button><button class="btn sm" id="gdConfig" title="Configurar Excel de OneDrive">⚙</button><button class="btn sm" id="gdPush" title="Guarda cambios del portal en el Excel de OneDrive">↑ Guardar en OneDrive</button>':""}${(state.area==="owner"||state.area==="full")&&!state.mcp&&!GD.clientId?'<button class="btn sm" id="gdConfig" title="Conectar con Microsoft 365 / OneDrive">🔗 Conectar OneDrive</button>':""}${(state.area==="owner"||state.area==="full")?'<button class="btn sm" id="odPush" title="Descarga Excel actualizado para subir manualmente a OneDrive">↑ Exportar a Excel</button>':""}<button class="btn sm" id="dlSel" ${rows.length?"":"disabled"}>Descargar ${sel.length?"seleccionadas":"vista"} (.xlsx)</button><button class="btn sm" id="dlBackup">Respaldo completo</button></div>
+    <div style="font-size:11px;font-weight:600;color:var(--ink-3);letter-spacing:.05em;margin-bottom:6px;text-transform:uppercase">Estado</div>
+    <div class="atn-bar" role="group" aria-label="Filtrar por atención" style="margin-bottom:10px">${atns.map(a=>`<button class="atn" data-atn="${esc(a)}" aria-pressed="${state.f.atn===a}">${a||"Todas"}<b>${a?cnt(a):base.length}</b></button>`).join("")}</div>
+    <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:space-between;padding-top:2px;border-top:1px solid var(--line)">
+      <div style="display:flex;align-items:center;gap:6px">
+        ${(state.area==="owner"||state.area==="full")&&state.mcp?'<button class="btn primary sm" id="odSync">↻ Actualizar desde Excel</button>':""}
+        ${(state.area==="owner"||state.area==="full")&&!state.mcp&&GD.clientId?'<button class="btn primary sm" id="gdSync">↻ OneDrive</button><button class="btn sm" id="gdConfig" title="Configurar Excel de OneDrive">⚙</button><button class="btn sm" id="gdPush" title="Guarda cambios del portal en el Excel de OneDrive">↑ Guardar en OneDrive</button>':""}
+        ${(state.area==="owner"||state.area==="full")&&!state.mcp&&!GD.clientId?'<button class="btn sm" id="gdConfig" title="Conectar con Microsoft 365 / OneDrive">🔗 Conectar OneDrive</button>':""}
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        ${(state.area==="owner"||state.area==="full")?'<button class="btn sm" id="odPush" title="Descarga Excel actualizado para subir manualmente a OneDrive">↑ Exportar a Excel</button>':""}
+        <button class="btn sm" id="dlSel" ${rows.length?"":"disabled"}>Descargar ${sel.length?"seleccionadas":"vista"} (.xlsx)</button>
+        <button class="btn sm" id="dlBackup">Respaldo</button>
+      </div>
+    </div>
     ${sel.length?`<div class="toolbar selbar"><b>${sel.length} seleccionada${sel.length>1?"s":""}</b>
         ${w?`<select id="bulkTT" class="btn sm" aria-label="Cambiar Status TT"><option value="">Cambiar Status TT…</option>${opt("statusTT")}</select>
         <select id="bulkCorreo" class="btn sm" aria-label="Cambiar correo enviado a operaciones"><option value="">Correo env. operaciones…</option>${opt("correoOp")}</select>
