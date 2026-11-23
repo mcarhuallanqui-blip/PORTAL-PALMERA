@@ -1106,9 +1106,9 @@ function matchChain(v){const n=norm(v);if(!n)return null;if(n.includes("tambo"))
 function matchEstado(v){const n=norm(v);if(!n)return null;if(n.startsWith("fact"))return"Facturada";if(n.startsWith("desp")||n.startsWith("entreg"))return"Despachada";if(n.startsWith("conf"))return"Confirmada";if(n.startsWith("dese")||n.startsWith("anul")||n.startsWith("rech"))return"Desestimada";if(n.startsWith("nuev")||n.startsWith("pend")||n==="tbd")return"Nueva";return null}
 let pending=null, pendingFact=null;
 /* ---------- Sincronizar desde el Excel de OneDrive (Microsoft 365, solo lectura) ---------- */
-const OD={server:"Microsoft 365",tool:"read_resource",uri:"file:///b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB/015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6",name:"Facturación_Palmera_Octubre.xlsx"};
+const OD={server:"Microsoft 365",tool:"read_resource",uri:"file:///b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB/015HP6ULN63LMA6G3KKJC3BYRMHOAE23VA",name:"Facturación_Palmera_Noviembre_v4.xlsx"};
 /* ---------- Microsoft Graph API (funciona fuera de Claude también) ---------- */
-const GD={get drive(){return localStorage.getItem("palmera-gd-drive")||"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB"},get item(){return localStorage.getItem("palmera-gd-item")||"015HP6ULPPXUUCPNA2NZE3HG6T2TPSVDA6"},get shareUrl(){return localStorage.getItem("palmera-share-url")||""},tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||"8ab78026-b9f7-4b77-ae38-f0e7c2d0352b"}};
+const GD={get drive(){return localStorage.getItem("palmera-gd-drive")||"b!ftpx1PHMU02Xyd_BvRi5gZ4jKtzFMjZHt1vZTICVWd0sPgcGYMRfTZopqpx_5vTB"},get item(){return localStorage.getItem("palmera-gd-item")||"015HP6ULN63LMA6G3KKJC3BYRMHOAE23VA"},get shareUrl(){return localStorage.getItem("palmera-share-url")||""},tenant:"ttauditperu.onmicrosoft.com",get clientId(){return localStorage.getItem("palmera-msal-cid")||"8ab78026-b9f7-4b77-ae38-f0e7c2d0352b"}};
 let msalApp=null;
 async function getMSAL(){
   if(!GD.clientId||typeof msal==="undefined")return null;
