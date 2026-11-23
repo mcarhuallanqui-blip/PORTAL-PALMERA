@@ -1152,7 +1152,8 @@ async function graphSync(btn){
     const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
     const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
     const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
-    if(cons.length){const hdr=cons[0].map(h=>String(h||"").trim()).filter(Boolean);console.log("CONSOLIDADO headers:",hdr);alert("Columnas CONSOLIDADO:\n"+hdr.join("\n"))}
+    window._dbgHdr=cons.length?cons[0].map(h=>String(h||"").trim()).filter(Boolean):[];
+    window._dbgSheets=wb.SheetNames.slice();
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
@@ -1279,7 +1280,9 @@ function odShowReview(exs,facs){
   odPending={upd,nue,solo,fNew};
   const lab=k=>({atencion:"Atención",completo:"Completo",factSi:"Factura",statusTT:"Status TT",correoOp:"Correo op.",correoGR:"Correo GR",nc:"NC",portalPago:"Portal pago",pago:"Pagado/vencido",emisionFac:"Emisión fact.",vencFac:"Venc. factura",vencPortal:"Venc. portal",vencOC:"Fec. vencimto.",totalOC:"Total OC",unidadesOC:"Unidades",factura:"Factura N°",local:"Detalle canal",emision:"Fec. emisión",entrega:"Fec. entrega"}[k]||k);
   const vv=v=>v===""||v==null?"(vacío)":esc(v);
+  const _dbgHtml=window._dbgHdr?`<details style="margin-bottom:12px;font-size:12px"><summary style="cursor:pointer;color:var(--ink-3)">🔍 Debug: pestañas y columnas del Excel</summary><div style="margin-top:6px;padding:8px;background:var(--surface-2);border-radius:6px;white-space:pre-wrap;font-family:monospace;font-size:11px">Pestañas: ${(window._dbgSheets||[]).join(" | ")}\n\nColumnas CONSOLIDADO:\n${window._dbgHdr.map((h,i)=>i+": "+h).join("\n")}</div></details>`:"";
   $("#modal").innerHTML=`<div class="modal-card" style="width:min(860px,100%)"><h2 id="modalTitle">Actualizar desde Excel</h2>
+   ${_dbgHtml}
    <p class="muted" style="margin:-8px 0 12px">${exs.length} OC y ${facs.length} líneas FACTURA leídas. El Excel manda; se conservan Obs, citas, documentos e historial del portal.</p>
    ${!upd.length&&!nue.length&&!solo.length&&!fNew.length?'<div class="ok-note">El portal ya está igual al Excel. No hay nada que actualizar.</div>':""}
    ${upd.length?`<div class="section-t">${upd.length} OC con cambios</div><div class="table-wrap" style="max-height:260px;overflow:auto"><table><thead><tr><th>OC</th><th>Cambio</th></tr></thead><tbody>${upd.map(u=>`<tr><td class="ocnum">${esc(numV(u.p))}</td><td style="white-space:normal">${u.ch.map(k=>{const a=k in u.x.cons?C(u.p)[k]:u.p[k],b=k in u.x.cons?u.x.cons[k]:u.x[k];return `<b>${lab(k)}</b>: ${vv(a)} → ${vv(b)}`}).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:""}
