@@ -1152,6 +1152,7 @@ async function graphSync(btn){
     const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
     const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
     const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
+    if(cons.length){const hdr=cons[0].map(h=>String(h||"").trim()).filter(Boolean);console.log("CONSOLIDADO headers:",hdr);alert("Columnas CONSOLIDADO:\n"+hdr.join("\n"))}
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
