@@ -1614,7 +1614,7 @@ document.addEventListener("click",async e=>{
   const cf=t.closest("[data-cobf]"); if(cf){state.cobF=cf.dataset.cobf;render();return}
   if(t.id==="togCob"){state.showCob=!state.showCob;render();return}
   const pg=t.closest("[data-pagado]"); if(pg){const o=state.ocs.find(x=>x.id===pg.dataset.pagado);if(o){pg.disabled=true;try{await setCons(o,"pago","PAGADO");toast(`OC ${numV(o)}: PAGADO`)}catch(e){pg.disabled=false;toast("No se pudo guardar")}}return}
-  if(t.id==="autoFact"){const b=t;b.disabled=true;b.textContent="Cargando…";autoLoadFact().then(()=>{if(!factRows().length)toast("No se encontraron líneas en la hoja FACTURA")}).catch(e=>toast("Error: "+(e.message||e))).finally(()=>{b.disabled=false;b.textContent="↻ Cargar desde OneDrive"});return}
+  if(t.id==="autoFact"){const b=t;b.disabled=true;b.textContent="Cargando…";autoLoadFact().catch(e=>{toast("Error al cargar FACTURA: "+(e.message||e))}).finally(()=>{b.disabled=false;b.textContent="↻ Cargar desde OneDrive"});return}
   if(t.id==="addInv"){if(!state.canWrite){toast("Solo lectura");return}invPreset="";$("#invIn").click();return}
   const io=t.closest("[data-invoc]"); if(io){invPreset=io.dataset.invoc;$("#invIn").click();return}
   const pvb=t.closest("[data-pv]"); if(pvb){const r=document.querySelector(`[data-pvd="${pvb.dataset.pv}"]`);if(r)r.hidden=!r.hidden;return}
@@ -1655,13 +1655,15 @@ $("#svcBtn").onclick=()=>{const o=!$("#mega").classList.contains("open");$("#meg
 /* ---------- Auto-load FACTURA ---------- */
 async function autoLoadFact(){
   if(!GD.clientId)return;
-  if(GD.shareUrl&&!localStorage.getItem("palmera-gd-drive")){const ok=await resolveShareUrl(GD.shareUrl).catch(()=>false);if(!ok)return}
-  const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content").catch(()=>null);
-  if(!resp)return;const buf=await resp.arrayBuffer().catch(()=>null);if(!buf)return;
+  if(GD.shareUrl&&!localStorage.getItem("palmera-gd-drive")){const ok=await resolveShareUrl(GD.shareUrl).catch(()=>false);if(!ok)throw new Error("No se pudo resolver la URL de OneDrive")}
+  const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content").catch(e=>{throw new Error("Error de conexión: "+(e.message||e))});
+  if(!resp)throw new Error("No autenticado. Inicia sesión con Microsoft primero.");
+  if(!resp.ok){const txt=await resp.text().catch(()=>"");throw new Error("Error OneDrive HTTP "+resp.status+(txt?": "+txt.slice(0,120):""))}
+  const buf=await resp.arrayBuffer().catch(e=>{throw new Error("Error leyendo archivo: "+(e.message||e))});
   const wb=XLSX.read(buf,{type:"array",cellDates:true});
   const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
   const facs=odParseFact(xlsxSheet(wb,factName));const fAll=facs.filter(r=>r.factura);
-  if(!fAll.length)return;
+  if(!fAll.length)throw new Error("El Excel no tiene filas con factura en la hoja FACTURA ("+wb.SheetNames.join(", ")+")");
   await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
   toast("FACTURA cargada: "+fAll.length+" líneas")
 }
