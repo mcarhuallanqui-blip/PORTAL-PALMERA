@@ -1539,9 +1539,16 @@ async function doImport(){
 
 async function saveFile(filename,wb){
   const out=XLSX.write(wb,{bookType:"xlsx",type:"array"});
-  if(!state.downloads){toast("La descarga no está disponible en esta vista");return}
-  try{await state.downloads.save({filename,data:new Uint8Array(out)});toast("Archivo listo: "+filename)}
-  catch(e){if(e&&e.code!=="declined")toast("No se pudo descargar ("+(e.code||"error")+")")}
+  if(state.downloads){
+    try{await state.downloads.save({filename,data:new Uint8Array(out)});toast("Archivo listo: "+filename)}
+    catch(e){if(e&&e.code!=="declined")toast("No se pudo descargar ("+(e.code||"error")+")")}
+  }else{
+    const blob=new Blob([out],{type:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"});
+    const url=URL.createObjectURL(blob);const a=document.createElement("a");
+    a.href=url;a.download=filename;document.body.appendChild(a);a.click();
+    setTimeout(()=>{URL.revokeObjectURL(url);a.remove()},1000);
+    toast("Descargando: "+filename);
+  }
 }
 function ocRows(list){const r=[];list.forEach(o=>(o.items&&o.items.length?o.items:[{}]).forEach(i=>r.push({"Cadena":o.cadena,"N° OC":numV(o),"Local":o.local,"Fecha emisión":fmtD(o.emision),"Fecha entrega":fmtD(o.entrega),"SKU":i.sku||"","Descripción":i.descripcion||"","Cantidad":Number(i.cantidad)||0,"Precio unitario":Number(i.precio)||0,"Subtotal":(Number(i.cantidad)||0)*(Number(i.precio)||0),"Estado":o.estado,"Factura":o.factura||""})));return r}
 function consRows(list){return list.map(o=>{const c=C(o);const D=v=>v?fmtD(v):"";return {"Nro O/C":numV(o),"ATENCION":c.atencion,"COMPLETO/ INCOMPLETO":c.completo||"","FACTURA":c.factSi||"","CANAL":o.cadena==="Plaza Vea"?"SUPESA":o.cadena.toUpperCase(),"DETALLE CANAL":o.local||"","STATUS TT":c.statusTT||"","CORREO ENVIADO OPERACIONES":c.correoOp||"","CORREO DE GR":c.correoGR||"","NC":c.nc||"","FACTURA2":o.factura||"","FECHA EMISIÓN":D(c.emisionFac),"VENCIMIENTO FACTURA":D(c.vencFac),"VENCIMIENTO PORTAL":D(c.vencPortal),"PORTAL PAGO":c.portalPago||"","PAGADO O VENCIDO":c.pago||"","Moneda":c.moneda||"SOL","Total $ OC":Math.round(totalOC(o)*100)/100,"Total Unidades":unitsOC(o),"Fec. Emision":D(o.emision),"Fec. Entrega":D(o.entrega),"Fec. Vencimto.":D(c.vencOC),"OBS":c.obs||""}})}
