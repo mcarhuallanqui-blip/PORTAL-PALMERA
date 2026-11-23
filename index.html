@@ -1651,6 +1651,26 @@ document.addEventListener("keydown",e=>{if(e.key==="Escape"){if($("#modal").clas
 function closeMega(){$("#mega").classList.remove("open");$("#svcBtn").setAttribute("aria-expanded","false")}
 $("#svcBtn").onclick=()=>{const o=!$("#mega").classList.contains("open");$("#mega").classList.toggle("open",o);$("#svcBtn").setAttribute("aria-expanded",String(o))};
 
+/* ---------- Auto-load FACTURA ---------- */
+async function autoLoadFact(){
+  if(!GD.clientId)return;
+  if(GD.shareUrl&&!localStorage.getItem("palmera-gd-drive")){const ok=await resolveShareUrl(GD.shareUrl).catch(()=>false);if(!ok)return}
+  const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content").catch(()=>null);
+  if(!resp)return;const buf=await resp.arrayBuffer().catch(()=>null);if(!buf)return;
+  const wb=XLSX.read(buf,{type:"array",cellDates:true});
+  const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
+  const facs=odParseFact(xlsxSheet(wb,factName));const fAll=facs.filter(r=>r.factura);
+  if(!fAll.length)return;
+  await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
+  toast("FACTURA cargada: "+fAll.length+" líneas")
+}
+async function autoLoadFactMcp(){
+  if(!state.mcp)return;
+  try{const t2=await odRead(2);const facs=odParseFact(odSheet(t2));const fAll=facs.filter(r=>r.factura);
+    if(!fAll.length)return;await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
+    toast("FACTURA cargada: "+fAll.length+" líneas")}catch(e){}
+}
+
 /* ---------- Boot ---------- */
 function setSync(on,txt){$("#syncDot").classList.toggle("on",on);$("#syncTxt").textContent=txt}
 state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact")||"null");state.costos=JSON.parse(localStorage.getItem(LS_KEY+"-costos")||"null")}catch(e){} render(); setSync(false,"Conectando…");
@@ -1689,17 +1709,18 @@ state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact
     setSync(false,"Guardado solo en este navegador");
   }
   setTimeout(()=>{
-    if(state.mcp&&(state.area==="owner"||state.area==="full")&&!state.ocs.length){
-      toast("Cargando datos desde el Excel de OneDrive…");
-      odSync({disabled:false,textContent:"↻"}).catch(()=>{});
+    if(state.mcp&&(state.area==="owner"||state.area==="full")){
+      if(!state.ocs.length){toast("Cargando datos desde el Excel de OneDrive…");odSync({disabled:false,textContent:"↻"}).catch(()=>{});}
+      else if(!state.fact){toast("Cargando FACTURA desde OneDrive…");autoLoadFactMcp().catch(()=>{});}
     }
   },2000);
   if(!state.mcp&&GD.clientId){
     getMSAL().then(app=>{
       if(!app)return;
       const acc=app.getAllAccounts();
-      if(acc.length&&(state.area==="owner"||state.area==="full")&&!state.ocs.length){
-        setTimeout(()=>{toast("Cargando datos desde OneDrive…");graphSync({disabled:false,textContent:"↻"}).catch(()=>{})},1000);
+      if(acc.length&&(state.area==="owner"||state.area==="full")){
+        if(!state.ocs.length){setTimeout(()=>{toast("Cargando datos desde OneDrive…");graphSync({disabled:false,textContent:"↻"}).catch(()=>{})},1000)}
+        else if(!state.fact){setTimeout(()=>{toast("Cargando FACTURA desde OneDrive…");autoLoadFact().catch(()=>{})},1000)}
       }
     }).catch(()=>{});
   }
