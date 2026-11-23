@@ -1148,12 +1148,10 @@ async function graphSync(btn){
     if(!resp)return;
     if(!resp.ok)throw new Error("HTTP "+resp.status);
     const buf=await resp.arrayBuffer();
-    const wb=XLSX.read(buf,{type:"array"});
+    const wb=XLSX.read(buf,{type:"array",cellDates:true});
     const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
     const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
     const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
-    window._dbgHdr=cons.length?cons[0].map(h=>String(h||"").trim()).filter(Boolean):[];
-    window._dbgSheets=wb.SheetNames.slice();
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
@@ -1217,10 +1215,14 @@ function gdShowConfig(){
 }
 const MES_ES={ene:1,feb:2,mar:3,abr:4,may:5,jun:6,jul:7,ago:8,sep:9,set:9,oct:10,nov:11,dic:12};
 function odNum(v){let s=String(v??"").replace(/S\/|\s| /g,"");if(!s||s==="-")return null;if(/,/.test(s))s=s.replace(/\./g,"").replace(",",".");else if(/^\d{1,3}(\.\d{3})+$/.test(s))s=s.replace(/\./g,"");const n=Number(s);return isNaN(n)?null:n}
-function odDate(v,ref){const s=String(v??"").trim();let m=/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(s);if(m)return `${m[3]}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`;
+function odDate(v,ref){
+  if(v instanceof Date){const y=v.getFullYear(),mo=v.getMonth()+1,d=v.getDate();if(isNaN(y)||y<1900||y>2100)return "";return `${y}-${String(mo).padStart(2,"0")}-${String(d).padStart(2,"0")}`}
+  const s=String(v??"").trim();if(!s||s==="-")return "";
+  let m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s);if(m)return m[0];
+  m=/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/.exec(s);if(m){let y=Number(m[3]);if(y<100)y+=y<50?2000:1900;return `${y}-${m[2].padStart(2,"0")}-${m[1].padStart(2,"0")}`}
   m=/^(\d{1,2})-([a-zA-Zé]{3})\.?(?:-(\d{2,4}))?$/.exec(s);if(m){const mo=MES_ES[m[2].toLowerCase()];if(!mo)return "";let y=m[3]?(m[3].length===2?2000+Number(m[3]):Number(m[3])):(ref?Number(ref.slice(0,4)):new Date().getFullYear());
     let iso=`${y}-${String(mo).padStart(2,"0")}-${m[1].padStart(2,"0")}`;if(!m[3]&&ref&&iso<addDays(ref,-60))iso=`${y+1}${iso.slice(4)}`;return iso}
-  m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s);return m?m[0]:""}
+  return ""}
 function odTxt(v){return String(v??"").replace(/ /g," ").trim()}
 function odSheet(text){const L=String(text||"").split("\n");const i=L.findIndex(l=>/^## Sheet:/.test(l));if(i<0)return [];const out=[];
   for(let j=i+1;j<L.length;j++){const l=L[j];if(/^Formulas:/.test(l)||/^## Sheet:/.test(l))break;if(!l.trim())continue;out.push(l.split("\t"))}return out}
@@ -1280,9 +1282,7 @@ function odShowReview(exs,facs){
   odPending={upd,nue,solo,fNew};
   const lab=k=>({atencion:"Atención",completo:"Completo",factSi:"Factura",statusTT:"Status TT",correoOp:"Correo op.",correoGR:"Correo GR",nc:"NC",portalPago:"Portal pago",pago:"Pagado/vencido",emisionFac:"Emisión fact.",vencFac:"Venc. factura",vencPortal:"Venc. portal",vencOC:"Fec. vencimto.",totalOC:"Total OC",unidadesOC:"Unidades",factura:"Factura N°",local:"Detalle canal",emision:"Fec. emisión",entrega:"Fec. entrega"}[k]||k);
   const vv=v=>v===""||v==null?"(vacío)":esc(v);
-  const _dbgHtml=window._dbgHdr?`<details style="margin-bottom:12px;font-size:12px"><summary style="cursor:pointer;color:var(--ink-3)">🔍 Debug: pestañas y columnas del Excel</summary><div style="margin-top:6px;padding:8px;background:var(--surface-2);border-radius:6px;white-space:pre-wrap;font-family:monospace;font-size:11px">Pestañas: ${(window._dbgSheets||[]).join(" | ")}\n\nColumnas CONSOLIDADO:\n${window._dbgHdr.map((h,i)=>i+": "+h).join("\n")}</div></details>`:"";
   $("#modal").innerHTML=`<div class="modal-card" style="width:min(860px,100%)"><h2 id="modalTitle">Actualizar desde Excel</h2>
-   ${_dbgHtml}
    <p class="muted" style="margin:-8px 0 12px">${exs.length} OC y ${facs.length} líneas FACTURA leídas. El Excel manda; se conservan Obs, citas, documentos e historial del portal.</p>
    ${!upd.length&&!nue.length&&!solo.length&&!fNew.length?'<div class="ok-note">El portal ya está igual al Excel. No hay nada que actualizar.</div>':""}
    ${upd.length?`<div class="section-t">${upd.length} OC con cambios</div><div class="table-wrap" style="max-height:260px;overflow:auto"><table><thead><tr><th>OC</th><th>Cambio</th></tr></thead><tbody>${upd.map(u=>`<tr><td class="ocnum">${esc(numV(u.p))}</td><td style="white-space:normal">${u.ch.map(k=>{const a=k in u.x.cons?C(u.p)[k]:u.p[k],b=k in u.x.cons?u.x.cons[k]:u.x[k];return `<b>${lab(k)}</b>: ${vv(a)} → ${vv(b)}`}).join(" · ")}</td></tr>`).join("")}</tbody></table></div>`:""}
