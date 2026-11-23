@@ -1254,9 +1254,10 @@ async function odRead(page){
   const blocks=(r&&r.content)||[];const t=blocks.filter(b=>b&&b.type==="text").map(b=>b.text).join("\n")||(typeof (r&&r.payload)==="string"?r.payload:"");
   if(!t)throw new Error("Microsoft 365 no devolvió contenido del Excel.");return t}
 function odParseCons(rows){
-  if(!rows.length)return [];const H=rows[0].map(norm);const col=k=>H.findIndex(h=>CMAP[h]===k);const idx={};["numero","atencion","completo","factSi","canal","local","statusTT","correoOp","correoGR","nc","factura","emisionFac","vencFac","vencPortal","portalPago","pago","moneda","totalOC","unidadesOC","emision","entrega","vencOC"].forEach(k=>idx[k]=col(k));
+  if(!rows.length)return [];let hi=0;for(let i=0;i<Math.min(5,rows.length);i++){const hn=rows[i].map(norm);if(hn.some(h=>CMAP[h]==="numero")||hn.includes("nrooc")){hi=i;break}}
+  const H=rows[hi].map(norm);const col=k=>H.findIndex(h=>CMAP[h]===k);const idx={};["numero","atencion","completo","factSi","canal","local","statusTT","correoOp","correoGR","nc","factura","emisionFac","vencFac","vencPortal","portalPago","pago","moneda","totalOC","unidadesOC","emision","entrega","vencOC"].forEach(k=>idx[k]=col(k));
   const g=(r,k)=>idx[k]>=0?r[idx[k]]:"";const out=[];
-  rows.slice(1).forEach(r=>{const num=odTxt(g(r,"numero"));if(!/^\d/.test(num))return;const cadena=matchChain(g(r,"canal"))||matchChain(g(r,"local"));if(!cadena)return;
+  rows.slice(hi+1).forEach(r=>{const num=odTxt(g(r,"numero"));if(!/^\d/.test(num))return;const cadena=matchChain(g(r,"canal"))||matchChain(g(r,"local"));if(!cadena)return;
     const atn=odTxt(g(r,"atencion")).toUpperCase()||"TBD";const emision=odDate(g(r,"emision"));const ref=emision||today();
     const fm=odTxt(g(r,"factura")).toUpperCase().match(/^F001-(\d+)$/);const factura=fm?"F001-"+fm[1].padStart(6,"0"):"";
     const U=k=>odTxt(g(r,k)).toUpperCase();
