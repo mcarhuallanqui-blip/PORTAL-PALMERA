@@ -781,19 +781,25 @@ function pivotHTML(title,rows,dateKey,valKey){
   <tr class="tot"><td>Total general</td>${p.cols.map(c=>`<td class="r num">${num2(tot(c))}</td>`).join("")}<td class="r num">${num2(p.months.reduce((s,k)=>s+rowT(k),0))}</td></tr></tbody></table></div></div>`;
 }
 function pendFact(){const set=new Set(factRows().map(r=>String(r.oc).trim()));return state.ocs.filter(o=>C(o).atencion==="ATENDIDO"&&!o.factura&&!set.has(numV(o))).sort((a,b)=>(C(b).emisionFac||b.entrega||"")>(C(a).emisionFac||a.entrega||"")?1:-1)}
+function pendPDF(){const factSet=new Set(factRows().map(r=>String(r.factura||"").trim()).filter(Boolean));return state.ocs.filter(o=>{const fac=String(o.factura||"").trim();return fac&&!factSet.has(fac)}).sort((a,b)=>(b.entrega||"")>(a.entrega||"")?1:-1)}
 function pendHTML(){const l=pendFact();if(!l.length)return"";
   return `<div class="pend"><div class="pend-h"><span class="tag-new">NEW</span><b>${l.length} OC atendida${l.length>1?"s":""} sin factura cargada</b><span class="muted" style="font-size:13px">No suman en FACTURA ni en las tablas hasta que agregues su factura.</span></div>
   <div class="table-wrap"><table><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Factura N°</th><th>Fec. entrega</th><th class="r">Total OC</th><th></th></tr></thead><tbody>
   ${l.map(o=>`<tr><td class="ocnum">${esc(numV(o))}</td><td><span class="chip" style="--c:${chainColor(o.cadena)}"><i></i>${esc(o.cadena)}</span></td><td>${esc(o.local||"")}</td><td class="num">${o.factura?esc(o.factura):'<span class="muted">—</span>'}</td><td class="num">${fmtD(o.entrega)}</td><td class="r num">${money(totalOC(o))}</td>
   <td class="r">${state.canWrite?`<button class="btn primary sm" data-invoc="${esc(numV(o))}">Agregar factura (PDF)</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`}
+function pendPDFHTML(){const l=pendPDF();if(!l.length)return"";
+  return `<div class="pend" style="border-color:#0ea5e9;background:color-mix(in srgb,#0ea5e9 6%,var(--surface))"><div class="pend-h"><span class="tag-new" style="background:#0ea5e9">PDF</span><b>${l.length} factura${l.length>1?"s":""} en CONSOLIDADO sin líneas en FACTURA</b><span class="muted" style="font-size:13px">El número de factura viene del Excel pero faltan las líneas de producto. Sube el PDF para completarlas.</span></div>
+  <div class="table-wrap"><table><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Factura N°</th><th>Fec. entrega</th><th class="r">Total OC</th><th></th></tr></thead><tbody>
+  ${l.map(o=>`<tr><td class="ocnum">${esc(numV(o))}</td><td><span class="chip" style="--c:${chainColor(o.cadena)}"><i></i>${esc(o.cadena)}</span></td><td>${esc(o.local||"")}</td><td class="num"><b style="color:#0ea5e9">${esc(o.factura)}</b></td><td class="num">${fmtD(o.entrega)}</td><td class="r num">${money(totalOC(o))}</td>
+  <td class="r">${state.canWrite?`<button class="btn sm" style="border-color:#0ea5e9;color:#0ea5e9" data-invoc="${esc(numV(o))}">Subir PDF</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`}
 function viewConsolidado(){
   const all=factRows();
-  if(!all.length) return pendHTML()+`<div class="panel"><div class="empty"><h3>Aún no hay datos de la hoja FACTURA</h3>Carga el Excel de facturación desde OneDrive o desde tu computadora.<div class="btns">${GD.clientId?`<button class="btn primary" id="autoFact">↻ Cargar desde OneDrive</button>`:`<button class="btn primary" data-go="carga">Importar Excel</button>`}<button class="btn" id="addInv">+ Agregar factura (PDF)</button></div></div></div>`;
+  if(!all.length) return pendPDFHTML()+pendHTML()+`<div class="panel"><div class="empty"><h3>Aún no hay datos de la hoja FACTURA</h3>Carga el Excel de facturación desde OneDrive o desde tu computadora.<div class="btns">${GD.clientId?`<button class="btn primary" id="autoFact">↻ Cargar desde OneDrive</button>`:`<button class="btn primary" data-go="carga">Importar Excel</button>`}<button class="btn" id="addInv">+ Agregar factura (PDF)</button></div></div></div>`;
   const dk=state.tdMode==="oc"?"fechaOC":"emisionFac";
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
   const sum=k=>rows.reduce((s,r)=>s+(Number(r[k])||0),0);
-  return pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
+  return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Agrupar por"><button data-td="oc" aria-pressed="${state.tdMode==="oc"}">OC recibidas</button><button data-td="fac" aria-pressed="${state.tdMode==="fac"}">Facturación realizada</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode==="oc"?"Agrupado por mes de FECHA OC":state.tdMode==="fac"?"Agrupado por mes de FECHA EMISIÓN FACTURA":"Hoja FACTURA, línea por línea"}</span>
       <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span></div>
