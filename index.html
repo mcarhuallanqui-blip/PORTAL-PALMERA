@@ -788,7 +788,7 @@ function pendHTML(){const l=pendFact();if(!l.length)return"";
   <td class="r">${state.canWrite?`<button class="btn primary sm" data-invoc="${esc(numV(o))}">Agregar factura (PDF)</button>`:""}</td></tr>`).join("")}</tbody></table></div></div>`}
 function viewConsolidado(){
   const all=factRows();
-  if(!all.length) return pendHTML()+`<div class="panel"><div class="empty"><h3>Aún no hay datos de la hoja FACTURA</h3>Sube tu Excel de facturación en Importar, o agrega tus facturas PDF una por una.<div class="btns"><button class="btn primary" data-go="carga">Importar Excel</button><button class="btn" id="addInv">+ Agregar factura (PDF)</button></div></div></div>`;
+  if(!all.length) return pendHTML()+`<div class="panel"><div class="empty"><h3>Aún no hay datos de la hoja FACTURA</h3>Carga el Excel de facturación desde OneDrive o desde tu computadora.<div class="btns">${GD.clientId?`<button class="btn primary" id="autoFact">↻ Cargar desde OneDrive</button>`:`<button class="btn primary" data-go="carga">Importar Excel</button>`}<button class="btn" id="addInv">+ Agregar factura (PDF)</button></div></div></div>`;
   const dk=state.tdMode==="oc"?"fechaOC":"emisionFac";
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
@@ -1113,7 +1113,7 @@ let msalApp=null;
 async function getMSAL(){
   if(!GD.clientId||typeof msal==="undefined")return null;
   if(msalApp)return msalApp;
-  msalApp=new msal.PublicClientApplication({auth:{clientId:GD.clientId,authority:"https://login.microsoftonline.com/"+GD.tenant,redirectUri:location.origin+location.pathname},cache:{cacheLocation:"sessionStorage"}});
+  msalApp=new msal.PublicClientApplication({auth:{clientId:GD.clientId,authority:"https://login.microsoftonline.com/"+GD.tenant,redirectUri:location.origin+location.pathname},cache:{cacheLocation:"localStorage",storeAuthStateInCookie:true}});
   await msalApp.initialize();
   await msalApp.handleRedirectPromise().catch(()=>null);
   return msalApp;
@@ -1614,6 +1614,7 @@ document.addEventListener("click",async e=>{
   const cf=t.closest("[data-cobf]"); if(cf){state.cobF=cf.dataset.cobf;render();return}
   if(t.id==="togCob"){state.showCob=!state.showCob;render();return}
   const pg=t.closest("[data-pagado]"); if(pg){const o=state.ocs.find(x=>x.id===pg.dataset.pagado);if(o){pg.disabled=true;try{await setCons(o,"pago","PAGADO");toast(`OC ${numV(o)}: PAGADO`)}catch(e){pg.disabled=false;toast("No se pudo guardar")}}return}
+  if(t.id==="autoFact"){const b=t;b.disabled=true;b.textContent="Cargando…";autoLoadFact().then(()=>{if(!factRows().length)toast("No se encontraron líneas en la hoja FACTURA")}).catch(e=>toast("Error: "+(e.message||e))).finally(()=>{b.disabled=false;b.textContent="↻ Cargar desde OneDrive"});return}
   if(t.id==="addInv"){if(!state.canWrite){toast("Solo lectura");return}invPreset="";$("#invIn").click();return}
   const io=t.closest("[data-invoc]"); if(io){invPreset=io.dataset.invoc;$("#invIn").click();return}
   const pvb=t.closest("[data-pv]"); if(pvb){const r=document.querySelector(`[data-pvd="${pvb.dataset.pv}"]`);if(r)r.hidden=!r.hidden;return}
