@@ -826,7 +826,8 @@ function viewConsolidado(){
   return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Vista"><button data-td="oc" aria-pressed="${state.tdMode!=="factura"}">OC recibidas</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
-      <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span></div>
+      <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span>
+      ${state.mcp?`<button class="btn sm" id="reloadFact" title="Fuerza recarga de FACTURA desde Excel de OneDrive">↻ Recargar FACTURA</button>`:""}</div>
     ${state.tdMode!=="factura"?`
       <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">OC RECIBIDAS</div>
       <div class="td-grid" style="margin-bottom:16px">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"fechaOC","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"fechaOC","facturacion")}</div>
@@ -1652,6 +1653,7 @@ document.addEventListener("click",async e=>{
   const tdb=t.closest("[data-td]"); if(tdb){state.tdMode=tdb.dataset.td;render();return}
   if(t.id==="dlFact"){dlFact();return}
   if(t.id==="dlBackup"){dlBackup();return}
+  if(t.id==="reloadFact"){toast("Recargando FACTURA desde OneDrive…");autoLoadFactMcp().catch(e=>toast("Error: "+e.message));return}
   if(t.id==="dlCob"){dlCobranza();return}
   if(t.id==="odSync"){odSync(t);return}
   if(t.id==="odPush"){odPush();return}
@@ -1776,7 +1778,7 @@ state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact
   setTimeout(()=>{
     if(state.mcp&&(state.area==="owner"||state.area==="full")){
       if(!state.ocs.length){toast("Cargando datos desde el Excel de OneDrive…");odSync({disabled:false,textContent:"↻"}).catch(()=>{});}
-      else if(!state.fact){toast("Cargando FACTURA desde OneDrive…");autoLoadFactMcp().catch(()=>{});}
+      else{autoLoadFactMcp().catch(()=>{});}
     }
   },2000);
   if(!state.mcp&&GD.clientId){
