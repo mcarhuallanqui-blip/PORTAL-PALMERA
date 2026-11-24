@@ -828,10 +828,7 @@ function viewConsolidado(){
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
       <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span></div>
     ${state.tdMode!=="factura"?`
-      <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">OC RECIBIDAS</div>
-      <div class="td-grid" style="margin-bottom:16px">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"fechaOC","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"fechaOC","facturacion")}</div>
-      <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">FACTURACIÓN REALIZADA</div>
-      <div class="td-grid">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"emisionFac","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"emisionFac","facturacion")}</div>`:`
+      <div class="td-grid">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"fechaOC","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"fechaOC","facturacion")}</div>`:`
     <div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">FACTURA</span><span class="count">${rows.length} líneas · Facturación ${money(sum("facturacion"))} · Margen ${money(sum("margen"))}</span>
       <input id="fqf" value="${esc(state.fq)}" placeholder="Buscar OC, factura, producto…" style="padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:220px">
       <button class="btn sm" id="dlBackup">Respaldo completo (.xlsx)</button><button class="btn sm" id="dlFact">Descargar FACTURA y TD (.xlsx)</button></div>
