@@ -1175,6 +1175,8 @@ async function graphSync(btn){
     const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
     const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
     const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
+    const costoName=findSheetName(wb,["costo","Costo","COSTO","costos","Costos"],null);
+    if(costoName){const ci=parseCosto(xlsxSheet(wb,costoName));if(ci.length)await saveCostos(ci)}
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
   }catch(e){toast("Error leyendo OneDrive: "+(e.message||e))}
@@ -1296,6 +1298,21 @@ function odParseFact(rows){
     ["entrega","fechaOC","emisionFac","vencFac"].forEach(k=>o[k]=odDate(g(k)));["cantidad","costo","costoTTA","precioVenta","precioSinIGV","totalIGV","utilidad","margen","facturacion"].forEach(k=>o[k]=odNum(g(k)));
     if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}))}}
     out.push(o)});return out}
+function parseCosto(rows){
+  if(!rows.length)return[];let hi=0;
+  for(let i=0;i<Math.min(5,rows.length);i++){const hn=rows[i].map(norm);if(hn.some(h=>h.startsWith("costo")||h==="producto")){hi=i;break}}
+  const H=rows[hi].map(norm);
+  const iCosto=H.findIndex(h=>h.startsWith("costo"));
+  const iCaja=H.indexOf("caja");
+  const iProd=H.indexOf("producto");
+  const iSpf=H.findIndex(h=>h.startsWith("spf")||h==="spfdeet");
+  const iMarca=H.indexOf("marca");
+  const out=[];
+  rows.slice(hi+1).forEach(r=>{
+    const prod=String(r[iProd]??"").trim();if(!prod)return;
+    const costo=odNum(r[iCosto]);if(costo==null)return;
+    out.push({marca:String(r[iMarca]??"").trim(),producto:prod,spf:String(r[iSpf]??"").trim(),caja:odNum(r[iCaja])??null,alias:"",costo});
+  });return out}
 function odShowReview(exs,facs){
   if(!exs.length){toast("CONSOLIDADO vacío en el Excel");return}
   const F=["atencion","completo","factSi","statusTT","correoOp","correoGR","nc","portalPago","pago","emisionFac","vencFac","vencPortal","vencOC","totalOC","unidadesOC"];
@@ -1672,9 +1689,11 @@ async function autoLoadFact(){
   const buf=await resp.arrayBuffer().catch(e=>{throw new Error("Error leyendo archivo: "+(e.message||e))});
   const wb=XLSX.read(buf,{type:"array",cellDates:true});
   const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
+  const costoName=findSheetName(wb,["costo","Costo","COSTO","costos","Costos"],null);
   const facs=odParseFact(xlsxSheet(wb,factName));const fAll=facs.filter(r=>r.factura);
   if(!fAll.length)throw new Error("El Excel no tiene filas con factura en la hoja FACTURA ("+wb.SheetNames.join(", ")+")");
   await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
+  if(costoName){const ci=parseCosto(xlsxSheet(wb,costoName));if(ci.length)await saveCostos(ci)}
   toast("FACTURA cargada: "+fAll.length+" líneas")
 }
 async function autoLoadFactMcp(){
