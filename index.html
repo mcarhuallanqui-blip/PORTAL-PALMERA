@@ -1793,7 +1793,7 @@ state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact
       const acc=app.getAllAccounts();
       if(acc.length&&(state.area==="owner"||state.area==="full")){
         if(!state.ocs.length){setTimeout(()=>{toast("Cargando datos desde OneDrive…");graphSync({disabled:false,textContent:"↻"}).catch(()=>{})},1000)}
-        else if(!state.fact){setTimeout(()=>{toast("Cargando FACTURA desde OneDrive…");autoLoadFact().catch(()=>{})},1000)}
+        else{setTimeout(()=>{autoLoadFact().catch(e=>toast("⚠ FACTURA: "+(e&&e.message||e)))},1000)}
       }
     }).catch(()=>{});
   }
