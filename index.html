@@ -1232,9 +1232,9 @@ async function graphPush(){
     const td=XLSX.utils.aoa_to_sheet(tdAOA(factRows()));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
     const buf=XLSX.write(wb,{bookType:"xlsx",type:"array"});
     const resp=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content",{method:"PUT",headers:{"Content-Type":"application/octet-stream"},body:new Uint8Array(buf)});
-    if(!resp||!resp.ok)throw new Error("HTTP "+(resp&&resp.status));
+    if(!resp||!resp.ok)throw new Error((resp&&resp.status)===423?"423 — Cierra el Excel en OneDrive y vuelve a intentarlo":(resp&&resp.status)===409?"409 — Conflicto, recarga la página":"HTTP "+(resp&&resp.status));
     toast("Excel actualizado en OneDrive ✓");
-  }catch(e){toast("Error actualizando OneDrive: "+(e.message||e))}
+  }catch(e){toast("⚠ "+("Error actualizando OneDrive: "+(e.message||e)),6000)}
 }
 function gdShowConfig(){
   const cur=GD.clientId;const curUrl=GD.shareUrl;
