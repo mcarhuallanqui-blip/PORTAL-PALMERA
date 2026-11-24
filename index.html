@@ -889,7 +889,12 @@ function parseInvoiceText(text){
   const m4=text.match(/(?:orden\s+de\s+compra|OC|N[°º]\s*OC)[:\s#]+(\d{5,12})/i);if(m4)inv.oc=m4[1].trim();
   const cat=Object.keys(catalog());
   const lines=[];
-  for(const prod of cat){const re=new RegExp(prod.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i");const mo=re.exec(text);if(mo){const after=text.slice(mo.index,mo.index+200);const qm=after.match(/(\d+)\s*(?:und|unid|caj|un\b|kg)/i)||after.match(/(?:Cant[^:]{0,5}:?\s*)(\d+)/i);const pm=after.match(/(\d[\d,.]+)/);lines.push({descripcion:prod,producto:prod,cantidad:qm?Number(qm[1]):1,valorUnitario:pm?Number(pm[1].replace(/,/g,".")):0})}}
+  for(const prod of cat){const re=new RegExp(prod.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i");const mo=re.exec(text);if(mo){
+    const before=text.slice(Math.max(0,mo.index-100),mo.index);
+    const afterName=text.slice(mo.index+mo[0].length,mo.index+mo[0].length+150);
+    const qm=before.match(/(\d{1,5})\s+(?:NIU|UNI?D?|KG|CJ)\b/i)||afterName.match(/(?:Cant[^:]{0,5}:?\s*)(\d+)/i)||before.match(/(?:^|\n)\s*(\d{1,4})\s*$/);
+    const pm=afterName.match(/(\d[\d,.]+)/);
+    lines.push({descripcion:prod,producto:prod,cantidad:qm?Number(qm[1]):1,valorUnitario:pm?Number(pm[1].replace(/,/g,".")):0})}}
   if(lines.length)inv.items=lines;
   return inv}
 async function readInvoice(file){
