@@ -880,7 +880,7 @@ async function saveFact(f){
 const CANAL_OF={"Tambo":"TAMBO","Plaza Vea":"SUPESA","Sodimac":"SODIMAC","Promart":"PROMART"};
 const CAD_OF={TAMBO:"Tambo",SUPESA:"Plaza Vea",SODIMAC:"Sodimac",PROMART:"Promart"};
 const r2=v=>Math.round((Number(v)||0)*100)/100;
-function costItems(){return (state.costos&&state.costos.items)||[]}
+function costItems(){const it=state.costos&&state.costos.items;return(it&&it.length)?it:[...COSTOS_DEFAULT]}
 function costOf(name){const n=String(name||"").trim().toLowerCase();const it=costItems().find(i=>(i.alias||"").trim().toLowerCase()===n||(i.producto||"").trim().toLowerCase()===n);return it?Number(it.costo):undefined}
 function catalog(){const m={};factRows().forEach(r=>{if(r.producto&&(r.costo!=null||!(r.producto in m)))m[r.producto]=r.costo});
   costItems().forEach(i=>{m[(i.alias||i.producto).trim()]=Number(i.costo)});Object.keys(m).forEach(k=>{const c=costOf(k);if(c!==undefined)m[k]=c});return m}
