@@ -1748,7 +1748,7 @@ async function autoLoadFactMcp(){
 
 /* ---------- Boot ---------- */
 function setSync(on,txt){$("#syncDot").classList.toggle("on",on);$("#syncTxt").textContent=txt}
-state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact")||"null");state.costos=JSON.parse(localStorage.getItem(LS_KEY+"-costos")||"null");if(!state.costos){state.costos={items:[...COSTOS_DEFAULT]};if(state.fact&&state.fact.rows){const _ar=applyCostos(state.fact.rows);if(_ar.n){state.fact={...state.fact,rows:_ar.rows};try{localStorage.setItem(LS_KEY+"-fact",JSON.stringify(state.fact))}catch(_){}}}}}catch(e){} render(); setSync(false,"Conectando…");
+state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact")||"null");state.costos=JSON.parse(localStorage.getItem(LS_KEY+"-costos")||"null");if(!state.costos||!state.costos.items||!state.costos.items.length){state.costos={items:[...COSTOS_DEFAULT]};if(state.fact&&state.fact.rows){const _ar=applyCostos(state.fact.rows);if(_ar.n){state.fact={...state.fact,rows:_ar.rows};try{localStorage.setItem(LS_KEY+"-fact",JSON.stringify(state.fact))}catch(_){}}}}}catch(e){} render(); setSync(false,"Conectando…");
 (async()=>{
   const cl=window.claude;
   const [db,user,downloads,sample,assets,mcp]=await Promise.all(["db","user","downloads","sample","assets","mcp"].map(n=>cl&&cl.use?cl.use(n).catch(()=>null):Promise.resolve(null)));
