@@ -822,7 +822,7 @@ function viewConsolidado(){
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
   const sum=k=>rows.reduce((s,r)=>s+(Number(r[k])||0),0);
-  const excelRows=all.filter(r=>!r.src||r.src==="excel").map(r=>{const q=Number(r.cantidad)||0,pv=Number(r.precioVenta)||0,psi=Number(r.precioSinIGV)||0;return{...r,facturacion:pv>0?q*pv:psi>0?q*psi*1.18:(Number(r.facturacion)||0)}});
+  const excelRows=all.filter(r=>!r.src||r.src==="excel").map(r=>{const q=Number(r.cantidad)||0,mg=Number(r.margen)||0,tta=Number(r.costoTTA)||0;return{...r,facturacion:(mg+tta*q)*1.18}});
   return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Vista"><button data-td="oc" aria-pressed="${state.tdMode!=="factura"}">OC recibidas</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
