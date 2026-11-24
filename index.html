@@ -830,7 +830,7 @@ function viewConsolidado(){
       <div class="seg" role="group" aria-label="Vista"><button data-td="oc" aria-pressed="${state.tdMode!=="factura"}">OC recibidas</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
       <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span>
-      ${state.mcp?`<button class="btn sm" id="reloadFact" title="Fuerza recarga de FACTURA desde Excel de OneDrive">↻ Recargar FACTURA</button>`:""}</div>
+      <button class="btn sm" id="reloadFact" title="Fuerza recarga de FACTURA desde Excel de OneDrive">↻ Recargar FACTURA</button></div>
     ${state.tdMode!=="factura"?`
       <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">OC RECIBIDAS</div>
       <div class="td-grid" style="margin-bottom:16px">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"fechaOC","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"fechaOC","facturacion")}</div>
@@ -1733,6 +1733,7 @@ async function autoLoadFact(){
   if(costoName){const ci=parseCosto(xlsxSheet(wb,costoName));if(ci.length)await saveCostos(ci)}
   toast("FACTURA cargada: "+fAll.length+" líneas")
 }
+window.autoLoadFact=autoLoadFact;
 async function autoLoadFactMcp(){
   if(!state.mcp)return;
   try{
