@@ -1332,7 +1332,7 @@ function odParseFact(rows){
   const out=[];rows.slice(hi+1).forEach(r=>{const g=k=>idx[k]>=0?r[idx[k]]:"";const oc=odTxt(g("oc"));if(!/^\d/.test(oc)||!odTxt(g("producto")))return;
     const o={oc,canal:odTxt(g("canal")).toUpperCase(),detalle:odTxt(g("detalle")),factura:odTxt(g("factura")).toUpperCase(),producto:odTxt(g("producto")),src:"excel"};
     ["entrega","fechaOC","emisionFac","vencFac"].forEach(k=>o[k]=odDate(g(k)));["cantidad","costo","costoTTA","precioVenta","precioSinIGV","totalIGV","utilidad","margen","facturacion"].forEach(k=>o[k]=odNum(g(k)));
-    if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){const fOld=o.facturacion,mOld=o.margen;o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}));if(fOld!=null)o.facturacion=fOld;if(mOld!=null)o.margen=mOld;}}
+    if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){const fOld=o.facturacion,mOld=o.margen;o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}));o.facturacion=fOld;if(mOld!=null)o.margen=mOld;}}
     out.push(o)});return out}
 function parseCosto(rows){
   if(!rows.length)return[];let hi=0;
@@ -1734,6 +1734,7 @@ async function autoLoadFact(){
   toast("FACTURA cargada: "+fAll.length+" líneas")
 }
 window.autoLoadFact=autoLoadFact;
+window.debugFact=()=>{const rows=(state.fact&&state.fact.rows)||[];const by={};rows.forEach(r=>{if(!by[r.canal])by[r.canal]=[];if(by[r.canal].length<2)by[r.canal].push({factura:r.factura,mes:r.emisionFac||r.fechaOC,facturacion:r.facturacion,costo:r.costo,psi:r.precioSinIGV,qty:r.cantidad})});console.table(by);return by};
 async function autoLoadFactMcp(){
   if(!state.mcp)return;
   try{
