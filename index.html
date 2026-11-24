@@ -822,7 +822,7 @@ function viewConsolidado(){
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
   const sum=k=>rows.reduce((s,r)=>s+(Number(r[k])||0),0);
-  const excelRows=all.filter(r=>!r.src||r.src==="excel").map(r=>{const q=Number(r.cantidad)||0,mg=Number(r.margen)||0,tta=Number(r.costoTTA)||0;return{...r,facturacion:(mg+tta*q)*1.18}});
+  const excelRows=all.filter(r=>!r.src||r.src==="excel");
   return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Vista"><button data-td="oc" aria-pressed="${state.tdMode!=="factura"}">OC recibidas</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
@@ -1328,7 +1328,7 @@ function odParseFact(rows){
   const out=[];rows.slice(hi+1).forEach(r=>{const g=k=>idx[k]>=0?r[idx[k]]:"";const oc=odTxt(g("oc"));if(!/^\d/.test(oc)||!odTxt(g("producto")))return;
     const o={oc,canal:odTxt(g("canal")).toUpperCase(),detalle:odTxt(g("detalle")),factura:odTxt(g("factura")).toUpperCase(),producto:odTxt(g("producto")),src:"excel"};
     ["entrega","fechaOC","emisionFac","vencFac"].forEach(k=>o[k]=odDate(g(k)));["cantidad","costo","costoTTA","precioVenta","precioSinIGV","totalIGV","utilidad","margen","facturacion"].forEach(k=>o[k]=odNum(g(k)));
-    if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}))}}
+    if(o.costo==null){const c=costOf(o.producto);if(c!==undefined){const fOld=o.facturacion,mOld=o.margen;o.costo=c;Object.assign(o,calcLine({costo:c,precioSinIGV:o.precioSinIGV,cantidad:o.cantidad}));if(fOld!=null)o.facturacion=fOld;if(mOld!=null)o.margen=mOld;}}
     out.push(o)});return out}
 function parseCosto(rows){
   if(!rows.length)return[];let hi=0;
