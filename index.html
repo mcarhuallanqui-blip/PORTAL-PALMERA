@@ -1221,7 +1221,7 @@ async function graphSync(btn){
 async function graphPush(){
   const tok=await getGraphToken();if(!tok){toast("Inicia sesión con Microsoft primero");return}
   try{
-    const wb=XLSX.utils.book_new();
+    let wb;{const _ex=await graphFetch("/drives/"+GD.drive+"/items/"+GD.item+"/content");if(_ex&&_ex.ok){const _buf=await _ex.arrayBuffer();wb=XLSX.read(_buf,{type:"array",cellDates:true});["consolidado","factura","td de facmensual"].forEach(nm=>{const i=wb.SheetNames.findIndex(n=>n.toLowerCase()===nm);if(i>=0){delete wb.Sheets[wb.SheetNames[i]];wb.SheetNames.splice(i,1)}});}else{wb=XLSX.utils.book_new();}}
     const ocs=state.ocs.slice().sort((a,b)=>(a.emision||"")>(b.emision||"")?1:-1);
     const cons=ocs.map(o=>{const r=consRows([o])[0];const c=C(o);r["FECHA EMISIÓN"]=xDate(c.emisionFac);r["VENCIMIENTO FACTURA"]=xDate(c.vencFac);r["VENCIMIENTO PORTAL"]=xDate(c.vencPortal);r["Fec. Emision"]=xDate(o.emision);r["Fec. Entrega"]=xDate(o.entrega);r["Fec. Vencimto."]=xDate(c.vencOC);const n=Number(r["Nro O/C"]);if(/^\d+$/.test(r["Nro O/C"])&&n<1e12)r["Nro O/C"]=n;return r});
     const ws1=XLSX.utils.aoa_to_sheet([[]]);XLSX.utils.sheet_add_json(ws1,cons,{origin:"B2"});fmtDates(ws1);
