@@ -594,7 +594,7 @@ function cobHTML(){
 }
 function viewCostos(){
   const items=costItems(); const used={};factRows().forEach(r=>{used[r.producto]=(used[r.producto]||0)+1});
-  const unmapped=Object.keys(used).filter(n=>costOf(n)===undefined);
+  const _cd=new Set(COSTOS_DEFAULT.map(i=>i.producto.normalize("NFC").replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g," ").replace(/\s+/g," ").trim().toLowerCase()));const unmapped=Object.keys(used).filter(n=>{const nL=n.normalize("NFC").replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g," ").replace(/\s+/g," ").trim().toLowerCase();return costOf(n)===undefined&&!_cd.has(nL)});
   return `<div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">Costos internos Palmera${state.costos&&state.costos.anio?" · "+esc(state.costos.anio):""}</span></div>
   <div class="table-wrap"><table class="inv"><thead><tr><th>Marca</th><th>Producto</th><th>SPF / Deet</th><th class="r">Caja</th><th class="r">Costo</th><th></th></tr></thead><tbody id="cs-rows">
   ${items.map((i,ix)=>`<tr data-ix="${ix}"><td><input data-c="marca" value="${esc(i.marca||"")}" style="width:90px"></td><td><input data-c="producto" value="${esc(i.producto||"")}" style="min-width:280px"></td><td><input data-c="spf" value="${esc(i.spf??"")}" style="width:70px"></td><td><input data-c="caja" type="number" value="${esc(i.caja??"")}" style="width:70px"></td>
@@ -881,7 +881,7 @@ const CANAL_OF={"Tambo":"TAMBO","Plaza Vea":"SUPESA","Sodimac":"SODIMAC","Promar
 const CAD_OF={TAMBO:"Tambo",SUPESA:"Plaza Vea",SODIMAC:"Sodimac",PROMART:"Promart"};
 const r2=v=>Math.round((Number(v)||0)*100)/100;
 function costItems(){const it=state.costos&&state.costos.items;return(it&&it.length)?it:[...COSTOS_DEFAULT]}
-function costOf(name){const n=String(name||"").trim().toLowerCase();const it=costItems().find(i=>(i.alias||"").trim().toLowerCase()===n||(i.producto||"").trim().toLowerCase()===n);return it?Number(it.costo):undefined}
+function costOf(name){const nrm=s=>String(s||"").normalize("NFC").replace(/[\u00A0\u200B\u200C\u200D\uFEFF]/g," ").replace(/\s+/g," ").trim().toLowerCase();const n=nrm(name);const it=costItems().find(i=>nrm(i.alias||"")===n||nrm(i.producto||"")===n);return it?Number(it.costo):undefined}
 function catalog(){const m={};factRows().forEach(r=>{if(r.producto&&(r.costo!=null||!(r.producto in m)))m[r.producto]=r.costo});
   costItems().forEach(i=>{m[(i.alias||i.producto).trim()]=Number(i.costo)});Object.keys(m).forEach(k=>{const c=costOf(k);if(c!==undefined)m[k]=c});return m}
 function calcLine(l){const c=Number(l.costo)||0,psi=Number(l.precioSinIGV)||0,q=Number(l.cantidad)||0;const pv=psi*1.18,tta=c*1.03,u=psi-tta;
