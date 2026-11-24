@@ -1175,7 +1175,7 @@ async function graphSync(btn){
     const consName=findSheetName(wb,["CONSOLIDADO","Consolidado","consolidado"],0);
     const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
     const cons=xlsxSheet(wb,consName),fact=xlsxSheet(wb,factName);
-    const costoName=findSheetName(wb,["costo","Costo","COSTO","costos","Costos"],null);
+    const costoName=wb.SheetNames.find(s=>["costo","costos"].includes(norm(s)))||null;
     if(costoName){const ci=parseCosto(xlsxSheet(wb,costoName));if(ci.length)await saveCostos(ci)}
     const ocList=odParseCons(cons),facList=odParseFact(fact);
     odShowReview(ocList,facList);
@@ -1689,7 +1689,7 @@ async function autoLoadFact(){
   const buf=await resp.arrayBuffer().catch(e=>{throw new Error("Error leyendo archivo: "+(e.message||e))});
   const wb=XLSX.read(buf,{type:"array",cellDates:true});
   const factName=findSheetName(wb,["Facturación","Facturacion","FACTURACIÓN","FACTURACION","FACTURA","factura"],1);
-  const costoName=findSheetName(wb,["costo","Costo","COSTO","costos","Costos"],null);
+  const costoName=wb.SheetNames.find(s=>["costo","costos"].includes(norm(s)))||null;
   const facs=odParseFact(xlsxSheet(wb,factName));const fAll=facs.filter(r=>r.factura);
   if(!fAll.length)throw new Error("El Excel no tiene filas con factura en la hoja FACTURA ("+wb.SheetNames.join(", ")+")");
   await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
