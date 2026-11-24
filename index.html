@@ -1655,7 +1655,7 @@ document.addEventListener("click",async e=>{
   const tdb=t.closest("[data-td]"); if(tdb){state.tdMode=tdb.dataset.td;render();return}
   if(t.id==="dlFact"){dlFact();return}
   if(t.id==="dlBackup"){dlBackup();return}
-  if(t.id==="reloadFact"){toast("Recargando FACTURA desde OneDrive…");autoLoadFactMcp().catch(e=>toast("Error: "+e.message));return}
+  if(t.id==="reloadFact"){toast("Recargando FACTURA desde OneDrive…");(state.mcp?autoLoadFactMcp():autoLoadFact()).catch(e=>toast("⚠ "+(e&&e.message||e)));return}
   if(t.id==="dlCob"){dlCobranza();return}
   if(t.id==="odSync"){odSync(t);return}
   if(t.id==="odPush"){odPush();return}
