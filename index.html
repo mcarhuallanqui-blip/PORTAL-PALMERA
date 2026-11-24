@@ -206,7 +206,7 @@ table.cons tbody tr{cursor:pointer;user-select:none}
 .td-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px}
 @media (max-width:900px){.td-grid{grid-template-columns:1fr}}
 table.td td,table.td th{padding:8px 12px}
-table.td tr.tot td{font-weight:800;background:var(--surface-2);border-top:2px solid var(--line)}
+table.td tr.tot td{font-weight:800;background:var(--brand-tint);border-top:2px solid var(--brand);color:var(--brand)}
 table.td td.tc{font-weight:700}
 table.fac td,table.fac th{padding:7px 10px;font-size:13px}
 table.inv td{padding:5px 6px}table.inv input{width:100%;padding:6px 8px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-height:34px}
@@ -802,7 +802,7 @@ function pivotHTML(title,rows,dateKey,valKey){
   const p=pivot(rows,dateKey,valKey);if(!p.months.length)return `<div class="panel" style="padding:18px"><div class="section-t" style="margin-top:0">${title}</div><p class="muted">Sin datos.</p></div>`;
   const lab=k=>MES[Number(k.slice(5,7))-1]+(p.months.some(x=>x.slice(0,4)!==k.slice(0,4))?" "+k.slice(0,4):"");
   const tot=c=>p.months.reduce((s,k)=>s+(p.m[k][c]||0),0);const rowT=k=>p.cols.reduce((s,c)=>s+(p.m[k][c]||0),0);
-  return `<div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">${title}</span></div><div class="table-wrap"><table class="td"><thead><tr><th>Mes</th>${p.cols.map(c=>`<th class="r">${esc(c)}</th>`).join("")}<th class="r">Total general</th></tr></thead><tbody>
+  return `<div class="panel"><div style="padding:11px 14px 10px;border-bottom:1px solid var(--line);font-weight:700;font-size:14px;color:var(--ink)">${title}</div><div class="table-wrap"><table class="td"><thead><tr><th>Mes</th>${p.cols.map(c=>`<th class="r">${esc(c)}</th>`).join("")}<th class="r">Total general</th></tr></thead><tbody>
   ${p.months.map(k=>`<tr><td class="tc">${lab(k)}</td>${p.cols.map(c=>`<td class="r num">${p.m[k][c]!=null?num2(p.m[k][c]):'<span class="muted">—</span>'}</td>`).join("")}<td class="r num"><b>${num2(rowT(k))}</b></td></tr>`).join("")}
   <tr class="tot"><td>Total general</td>${p.cols.map(c=>`<td class="r num">${num2(tot(c))}</td>`).join("")}<td class="r num">${num2(p.months.reduce((s,k)=>s+rowT(k),0))}</td></tr></tbody></table></div></div>`;
 }
@@ -832,9 +832,9 @@ function viewConsolidado(){
       <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span>
       <button class="btn sm" id="reloadFact" title="Fuerza recarga de FACTURA desde Excel de OneDrive">↻ Recargar FACTURA</button></div>
     ${state.tdMode!=="factura"?`
-      <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">OC RECIBIDAS</div>
+      <div style="margin:0 0 12px;font-weight:700;font-size:13px;letter-spacing:.04em;color:var(--brand);border-left:3px solid var(--brand);padding:5px 12px;background:var(--brand-tint);border-radius:0 6px 6px 0">OC RECIBIDAS</div>
       <div class="td-grid" style="margin-bottom:16px">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"fechaOC","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"fechaOC","facturacion")}</div>
-      <div style="margin-bottom:6px;font-weight:600;font-size:13px;color:var(--ink-2)">FACTURACIÓN REALIZADA</div>
+      <div style="margin:0 0 12px;font-weight:700;font-size:13px;letter-spacing:.04em;color:var(--brand);border-left:3px solid var(--brand);padding:5px 12px;background:var(--brand-tint);border-radius:0 6px 6px 0">FACTURACIÓN REALIZADA</div>
       <div class="td-grid">${pivotHTML("Suma de MARGEN RETAIL",excelRows,"emisionFac","margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,"emisionFac","facturacion")}</div>`:`
     <div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">FACTURA</span><span class="count">${rows.length} líneas · Facturación ${money(sum("facturacion"))} · Margen ${money(sum("margen"))}</span>
       <input id="fqf" value="${esc(state.fq)}" placeholder="Buscar OC, factura, producto…" style="padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:220px">
