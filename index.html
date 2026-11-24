@@ -240,10 +240,10 @@ table.inv td{padding:5px 6px}table.inv input{width:100%;padding:6px 8px;border:1
 .obs-box{width:100%;min-height:84px;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius-s);background:var(--surface);font:inherit;resize:vertical}
 .atn-bar{display:flex;gap:6px;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
 .atn{border:1px solid var(--line);background:var(--surface);border-radius:999px;padding:5px 12px;font-size:13px;font-weight:600;cursor:pointer;color:var(--ink-2)}
-.atn b{font-weight:700;margin-left:4px;color:var(--ink-3)}
+.atn b{font-weight:600;margin-left:7px;background:var(--surface-2);color:var(--ink-3);font-size:11px;padding:0 7px;border-radius:999px;border:1px solid var(--line)}
 .atn[aria-pressed="true"]{background:var(--brand);border-color:var(--brand);color:#fff}
-.atn[aria-pressed="true"] b{color:#fff;opacity:.85}
-table.cons th,table.cons td{padding:8px 10px}
+.atn[aria-pressed="true"] b{color:#fff;opacity:1;background:rgba(255,255,255,0.18);border-color:rgba(255,255,255,0.3)}
+table.cons th,table.cons td{padding:8px 10px}.cons.compact .col-sec{display:none}
 table.cons .stk{width:42px;min-width:42px;max-width:42px;position:sticky;left:0;z-index:2;background:var(--surface)}
 table.cons .stk2{position:sticky;left:42px;z-index:2;background:var(--surface);box-shadow:1px 0 0 var(--line)}
 table.cons th.stk,table.cons th.stk2{background:var(--surface-2);z-index:3}
@@ -383,7 +383,7 @@ const state = {
   sample:null, area:"pending", accesos:[], me:null, canPago:false, impChain:"", costos:null, showCob:true, cobF:"ven", fact:null, tdMode:"oc", fq:"",
   view:"consulta", chain:"Todas", ocs:[], selected:new Set(),
   f:{estado:"",atn:"",pago:"",desde:"",hasta:"",q:""}, sort:{k:"emision",d:-1},
-  db:null, user:null, downloads:null, canWrite:true, mode:"local"
+  db:null, user:null, downloads:null, canWrite:true, colCompact:localStorage.getItem('palmera-col-compact')==="1", mode:"local"
 };
 const $ = s=>document.querySelector(s);
 const esc = s=>String(s??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]));
@@ -502,24 +502,24 @@ function pill(v){return v?`<span class="pill ${tone(v)}">${esc(v)}</span>`:'<spa
 function consTableHTML(rows){
   const allSel=rows.length&&rows.every(o=>state.selected.has(o.id));
   const dd=(o,k)=>{const v=C(o)[k];return v?fmtD(v):'<span class="muted">—</span>'};
-  return `<div class="table-wrap"><table class="cons">
+  return `<div class="table-wrap"><table class="${state.colCompact?'cons compact':'cons'}">
     <thead><tr>
       <th class="stk"><input type="checkbox" id="selAll" aria-label="Seleccionar todas" ${allSel?"checked":""}></th>
-      ${th("numero","Nro O/C","stk2")}${th("vencOC","Fec. vencimto.")}${th("atencion","Atención")}${th("completo","Completo /<br>Incompleto")}${th("factSi","Factura")}${th("cadena","Canal")}${th("local","Detalle canal")}
-      ${th("statusTT","Status TT")}${th("correoOp","Correo env.<br>operaciones")}${th("correoGR","Correo<br>de GR")}<th></th>
+      ${th("numero","Nro O/C","stk2")}${th("vencOC","Fec. vencimto.")}${th("atencion","Atención")}${th("completo","Completo /<br>Incompleto","col-sec")}${th("factSi","Factura")}${th("cadena","Canal")}${th("local","Detalle canal")}
+      ${th("statusTT","Status TT")}${th("correoOp","Correo env.<br>operaciones","col-sec")}${th("correoGR","Correo<br>de GR","col-sec")}<th></th>
     </tr></thead><tbody>
     ${rows.map(o=>{const c=C(o);return `<tr class="${state.selected.has(o.id)?"sel":""}" data-row="${esc(o.id)}" title="Doble clic para editar todas las columnas">
       <td class="stk"><input type="checkbox" data-sel="${esc(o.id)}" aria-label="Seleccionar ${esc(o.numero)}" ${state.selected.has(o.id)?"checked":""}></td>
       <td class="stk2 ocnum">${esc(numV(o))}${c.obs?`<span class="obs-ic" title="${esc(c.obs)}" aria-label="Tiene observaciones">💬</span>`:""}</td>
       <td class="num" style="white-space:nowrap;min-width:104px">${dd(o,"vencOC")}</td>
       <td>${pill(c.atencion)}</td>
-      <td>${pill(c.completo)}</td>
-      <td>${pill(c.factSi)}</td>
+      <td class="col-sec">${pill(c.completo)}</td>
+      <td>${c.factSi==="SI"?'<span class="pill v-ok">SI</span>':c.factSi==="NO"?'<span class="pill v-wait">NO</span>':c.factSi?pill(c.factSi):'<span class="muted">—</span>'}</td>
       <td><span class="chip" style="--c:${chainColor(o.cadena)}"><i></i>${esc(o.cadena)}</span></td>
       <td style="max-width:240px;overflow:hidden;text-overflow:ellipsis">${esc(o.local||"—")}</td>
       <td>${pill(c.statusTT)}</td>
-      <td>${pill(c.correoOp)}</td>
-      <td>${pill(c.correoGR)}</td>
+      <td class="col-sec">${pill(c.correoOp)}</td>
+      <td class="col-sec">${pill(c.correoGR)}</td>
       <td><button class="icon-btn" data-edit="${esc(o.id)}" title="Editar" aria-label="Editar OC ${esc(o.numero)}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg></button><button class="icon-btn" data-open="${esc(o.id)}" title="Ver detalle y productos" aria-label="Ver detalle ${esc(o.numero)}"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M7 3h7l5 5v13H7z"/><path d="M14 3v5h5M10 13h6M10 17h6"/></svg></button></td>
     </tr>`}).join("")}
     </tbody></table></div>`;
@@ -673,7 +673,7 @@ function viewCobranza(){
   const sit=o=>{if(C(o).pago==="PAGADO")return '<span class="pill v-ok">PAGADO</span>';const v=vencCob(o);if(!v)return '<span class="muted">sin fecha</span>';const d=diasVenc(o);return d>0?`<span class="late">vencida hace ${d} día${d===1?"":"s"}</span>`:d===0?'<span class="late">vence hoy</span>':`vence en ${-d} día${d===-1?"":"s"}`};
   return `<div class="kpis">${Object.entries(sets).map(([k,[l,t,c]])=>`<button class="kpi" style="--k:${c}" data-cobf="${k}" aria-pressed="${state.cobF===k}"><span>${t}</span><b class="num">${l.length}</b><small class="num">${tot(l)}</small></button>`).join("")}</div>
   <div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">${sets[state.cobF][1]}</span><span class="count">${list.length} facturas · ${tot(list)} con IGV</span><span style="flex:1"></span><button class="btn sm" id="dlCob">Descargar histórico (.xlsx)</button></div>
-  ${list.length?`<div class="table-wrap"><table class="cons"><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Factura N°</th><th>Emisión factura</th><th>Vencimiento</th><th>Situación</th><th class="r">Monto factura (con IGV)</th><th>Portal pago</th><th class="r">${state.canWrite||state.canPago?"Pagado":""}</th></tr></thead><tbody>
+  ${list.length?`<div class="table-wrap"><table class="${state.colCompact?'cons compact':'cons'}"><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Factura N°</th><th>Emisión factura</th><th>Vencimiento</th><th>Situación</th><th class="r">Monto factura (con IGV)</th><th>Portal pago</th><th class="r">${state.canWrite||state.canPago?"Pagado":""}</th></tr></thead><tbody>
   ${list.map(o=>{const c=C(o);return `<tr data-row="${esc(o.id)}" title="Doble clic para editar"><td class="ocnum">${esc(numV(o))}</td><td><span class="chip" style="--c:${chainColor(o.cadena)}"><i></i>${esc(o.cadena)}</span></td><td>${esc(o.local||"")}</td><td class="num">${esc(o.factura||"—")}</td><td class="num">${fmtD(c.emisionFac)}</td>
     <td class="num">${fmtD(vencCob(o))} <span class="muted" style="font-size:11px">${c.vencPortal?"portal":c.vencFac?"factura":""}</span></td><td>${sit(o)}</td><td class="r num">${money(montoCob(o))}</td><td>${pill(c.portalPago)}</td>
     <td class="r">${state.canWrite||state.canPago?`<select class="cs ${tone(c.pago)}" data-pagosel="${esc(o.id)}" aria-label="Pagado o vencido OC ${esc(numV(o))}">${["PENDIENTE","PAGADO"].concat(["PENDIENTE","PAGADO"].includes(c.pago)?[]:[c.pago||"-"]).map(x=>`<option ${x===c.pago?"selected":""}>${esc(x)}</option>`).join("")}</select>`:""}</td></tr>`}).join("")}</tbody></table></div>`:`<div class="empty"><h3>Nada aquí</h3>${state.cobF==="ven"?"No hay facturas vencidas sin pagar.":"No hay facturas en este grupo."}</div>`}</div>`;
@@ -695,7 +695,7 @@ function viewConsulta(){
       <div style="display:flex;align-items:center;gap:6px">
         ${(state.area==="owner"||state.area==="full")?'<button class="btn sm" id="odPush" title="Descarga Excel actualizado para subir manualmente a OneDrive">↑ Exportar a Excel</button>':""}
         <button class="btn sm" id="dlSel" ${rows.length?"":"disabled"}>Descargar ${sel.length?"seleccionadas":"vista"} (.xlsx)</button>
-        <button class="btn sm" id="dlBackup">Respaldo</button>
+        <button class="btn sm" id="colToggle" title="Mostrar/ocultar columnas secundarias">${state.colCompact?"+ Columnas":"− Columnas"}</button><button class="btn sm" id="dlBackup">Respaldo</button>
       </div>
     </div>
     ${sel.length?`<div class="toolbar selbar"><b>${sel.length} seleccionada${sel.length>1?"s":""}</b>
@@ -723,7 +723,7 @@ function viewDespacho(){
   const rows=filtered().filter(o=>C(o).atencion==="ON GOING").sort((a,b)=>((D0(a).citaFecha||a.entrega||"9")>(D0(b).citaFecha||b.entrega||"9"))?1:-1);
   const hoy=today(),man=addDays(today(),1);
   return `<div class="panel">
-  ${rows.length?`<div class="table-wrap"><table class="cons"><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Fec. entrega OC</th><th>Cita</th><th>Lugar</th><th>Estado despacho</th><th class="r">Docs</th><th class="r">Unid.</th><th class="r">Total OC</th><th></th></tr></thead><tbody>
+  ${rows.length?`<div class="table-wrap"><table class="${state.colCompact?'cons compact':'cons'}"><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Fec. entrega OC</th><th>Cita</th><th>Lugar</th><th>Estado despacho</th><th class="r">Docs</th><th class="r">Unid.</th><th class="r">Total OC</th><th></th></tr></thead><tbody>
   ${rows.map(o=>{const d=D0(o);const cita=d.citaFecha?`${fmtD(d.citaFecha)}${d.citaHora?" "+esc(d.citaHora):""}${d.citaFecha===hoy?' <span class="pill v-bad">HOY</span>':d.citaFecha===man?' <span class="pill v-wait">MAÑANA</span>':""}`:'<span class="muted">sin cita</span>';
     return `<tr data-desp="${esc(o.id)}" title="Clic para gestionar el despacho"><td class="ocnum">${esc(numV(o))}</td><td><span class="chip" style="--c:${chainColor(o.cadena)}"><i></i>${esc(o.cadena)}</span></td><td>${esc(o.local||"")}</td>
     <td class="num ${isLate(o)?"late":""}">${fmtD(o.entrega)}</td><td class="num">${cita}</td><td>${esc(d.lugar||"—")}</td><td><span class="pill ${despTone(d.estado)}">${esc(d.estado)}</span></td>
@@ -1654,7 +1654,7 @@ document.addEventListener("click",async e=>{
   if(t.id==="doImport"){doImport();return}
   const tdb=t.closest("[data-td]"); if(tdb){state.tdMode=tdb.dataset.td;render();return}
   if(t.id==="dlFact"){dlFact();return}
-  if(t.id==="dlBackup"){dlBackup();return}
+  if(t.id==="colToggle"){state.colCompact=!state.colCompact;localStorage.setItem("palmera-col-compact",state.colCompact?"1":"");render();return}if(t.id==="dlBackup"){dlBackup();return}
   if(t.id==="reloadFact"){toast("Recargando FACTURA desde OneDrive…");(state.mcp?autoLoadFactMcp():autoLoadFact()).catch(e=>toast("⚠ "+(e&&e.message||e)));return}
   if(t.id==="dlCob"){dlCobranza();return}
   if(t.id==="odSync"){odSync(t);return}
