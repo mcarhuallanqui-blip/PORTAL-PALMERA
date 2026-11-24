@@ -5,6 +5,9 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Portal OC · Palmera</title>
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -1394,8 +1397,7 @@ async function odApply(){
       await saveOC({...x,items:its.length&&x.cons.atencion==="ATENDIDO"?its:[{sku:"",descripcion:"Total según OC (sin detalle de productos)",cantidad:u,precio:u?Math.round(t/u*10000)/10000:t}],origen:"Excel OneDrive",historial:[{fecha:now,txt:"Creada desde Excel OneDrive"}]});n++}
     const del=P.solo;
     for(const o of del){await deleteOC(o.id);n++}
-    if(P.fAll&&P.fAll.length){const pdfRows=((state.fact&&state.fact.rows)||[]).filter(r=>r.src==="pdf");const f=state.fact?{...state.fact}:{rows:[],fuente:"Excel OneDrive"};f.rows=[...pdfRows,...P.fAll];f.actualizado=now;await saveFact(f)}
-    $("#modal").classList.remove("open");odPending=null;toast(`Listo: ${P.upd.length} actualizadas, ${P.nue.length} nuevas, ${del.length} eliminadas, ${P.fNew.length} líneas FACTURA`);
+    $("#modal").classList.remove("open");odPending=null;toast(`Listo: ${P.upd.length} actualizadas, ${P.nue.length} nuevas, ${del.length} eliminadas`);
   }catch(e){b.disabled=false;b.textContent="Aplicar cambios";toast("Se detuvo con un error: "+(e.message||e.code)+". Vuelve a presionar Actualizar para ver lo que falta.")}
 }
 const CMAP={nrooc:"numero",atencion:"atencion",completoincompleto:"completo",factura:"factSi",canal:"canal",detallecanal:"local",statustt:"statusTT",correoenviadooperaciones:"correoOp",correodegr:"correoGR",correogr:"correoGR",nc:"nc",factura2:"factura",fechaemisionfactura:"emisionFac",fechaemision2:"emisionFac",emisionfactura:"emisionFac",fechaemision:"emisionFac",vencimientofactura:"vencFac",vencfactura:"vencFac",vencimientoportal:"vencPortal",portalpago:"portalPago",pagadoovencido:"pago",moneda:"moneda",totaloc:"totalOC",totalunidades:"unidadesOC",fecemision:"emision",fechaoc:"emision",fechaorden:"emision",emision:"emision",fecentrega:"entrega",fechaentrega:"entrega",entrega:"entrega",fecvencimto:"vencOC",fechavencimiento:"vencOC",vencimiento:"vencOC",vencoc:"vencOC",obs:"obs",observaciones:"obs"};
@@ -1733,9 +1735,13 @@ async function autoLoadFact(){
 }
 async function autoLoadFactMcp(){
   if(!state.mcp)return;
-  try{const t2=await odRead(2);const facs=odParseFact(odSheet(t2));const fAll=facs.filter(r=>r.factura);
-    if(!fAll.length)return;await saveFact({rows:fAll,fuente:"Excel OneDrive (auto)",actualizado:new Date().toISOString()});
-    toast("FACTURA cargada: "+fAll.length+" líneas")}catch(e){}
+  try{
+    const t2=await odRead(2);const facs=odParseFact(odSheet(t2));const fAll=facs.filter(r=>r.factura);
+    if(!fAll.length){toast("⚠ Sin filas FACTURA en el Excel ("+facs.length+" parciales)");return;}
+    const pdfRows=((state.fact&&state.fact.rows)||[]).filter(r=>r.src==="pdf");
+    await saveFact({rows:[...pdfRows,...fAll],fuente:"Excel OneDrive",actualizado:new Date().toISOString()});
+    toast("FACTURA actualizada: "+fAll.length+" líneas")
+  }catch(e){toast("⚠ Error recargando FACTURA: "+(e&&e.message||String(e)))}
 }
 
 /* ---------- Boot ---------- */
