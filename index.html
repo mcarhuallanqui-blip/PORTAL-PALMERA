@@ -799,11 +799,12 @@ function viewConsolidado(){
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
   const sum=k=>rows.reduce((s,r)=>s+(Number(r[k])||0),0);
+  const excelRows=all.filter(r=>!r.src||r.src==="excel");
   return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Agrupar por"><button data-td="oc" aria-pressed="${state.tdMode==="oc"}">OC recibidas</button><button data-td="fac" aria-pressed="${state.tdMode==="fac"}">Facturación realizada</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode==="oc"?"Agrupado por mes de FECHA OC":state.tdMode==="fac"?"Agrupado por mes de FECHA EMISIÓN FACTURA":"Hoja FACTURA, línea por línea"}</span>
       <span class="muted" style="font-size:12px;margin-left:auto">${state.fact.fuente?"Fuente: "+esc(state.fact.fuente):""}</span></div>
-    ${state.tdMode!=="factura"?`<div class="td-grid">${pivotHTML("Suma de MARGEN RETAIL",all,dk,"margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",all,dk,"facturacion")}</div>`:`
+    ${state.tdMode!=="factura"?`<div class="td-grid">${pivotHTML("Suma de MARGEN RETAIL",excelRows,dk,"margen")}${pivotHTML("Suma de FACTURACIÓN TOTAL",excelRows,dk,"facturacion")}</div>`:`
     <div class="panel"><div class="toolbar"><span class="count" style="color:var(--ink);font-weight:700">FACTURA</span><span class="count">${rows.length} líneas · Facturación ${money(sum("facturacion"))} · Margen ${money(sum("margen"))}</span>
       <input id="fqf" value="${esc(state.fq)}" placeholder="Buscar OC, factura, producto…" style="padding:7px 10px;border:1px solid var(--line);border-radius:6px;background:var(--surface);min-width:220px">
       <button class="btn sm" id="dlBackup">Respaldo completo (.xlsx)</button><button class="btn sm" id="dlFact">Descargar FACTURA y TD (.xlsx)</button></div>
@@ -812,10 +813,10 @@ function viewConsolidado(){
     </tbody></table></div></div>`}`;
 }
 function dlFact(){
-  const wb=XLSX.utils.book_new();const rows=factRows();
+  const wb=XLSX.utils.book_new();const rows=factRows();const excelRows=rows.filter(r=>!r.src||r.src==="excel");
   const ws=XLSX.utils.json_to_sheet(rows.map(r=>Object.fromEntries(FCOLS.map(([k,l,t])=>[l,t==="d"?(r[k]?fmtD(r[k]):""):(r[k]??"")]))));
   ws["!cols"]=FCOLS.map(([k,l])=>({wch:k==="producto"?50:Math.max(12,l.length+2)}));XLSX.utils.book_append_sheet(wb,ws,"FACTURA");
-  const td=XLSX.utils.aoa_to_sheet(tdAOA(rows));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
+  const td=XLSX.utils.aoa_to_sheet(tdAOA(excelRows));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
   saveFile(`Facturacion_TD_${today()}.xlsx`,wb);
 }
 function tdAOA(rows){const aoa=[];[["OC RECIBIDAS","fechaOC"],["FACTURACIÓN REALIZADA","emisionFac"]].forEach(([t,dk])=>{[["Suma de MARGEN RETAIL","margen"],["Suma de FACTURACIÓN TOTAL","facturacion"]].forEach(([vl,vk])=>{
@@ -834,7 +835,7 @@ function mkBackupWb(push){
   const fr=factRows().map(r=>Object.fromEntries(FCOLS.map(([k,l,t])=>[l,t==="d"?xDate(r[k]):(k==="oc"&&/^\d+$/.test(r[k])?Number(r[k]):(r[k]??""))])));
   const ws2=XLSX.utils.aoa_to_sheet([[]]);XLSX.utils.sheet_add_json(ws2,fr.length?fr:[Object.fromEntries(FCOLS.map(([k,l])=>[l,""]))],{origin:"B2"});fmtDates(ws2);
   ws2["!cols"]=[{wch:2},...FCOLS.map(([k,l])=>({wch:k==="producto"?50:Math.max(12,l.length+2)}))];XLSX.utils.book_append_sheet(wb,ws2,"FACTURA");
-  const td=XLSX.utils.aoa_to_sheet(tdAOA(factRows()));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
+  const td=XLSX.utils.aoa_to_sheet(tdAOA(factRows().filter(r=>!r.src||r.src==="excel")));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
   saveFile(push?OD.name:`Facturacion_Palmera_respaldo_${today()}.xlsx`,wb);
   if(push)toast("Excel descargado · sube "+OD.name+" a OneDrive para actualizar la base compartida");
 }
