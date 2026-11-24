@@ -822,8 +822,7 @@ function viewConsolidado(){
   const q=state.fq.trim().toLowerCase();
   const rows=all.filter(r=>!q||[r.oc,r.canal,r.detalle,r.factura,r.producto].join(" ").toLowerCase().includes(q));
   const sum=k=>rows.reduce((s,r)=>s+(Number(r[k])||0),0);
-  const _ocMap=new Map();all.forEach(r=>{if(r.oc&&!_ocMap.has(r.oc))_ocMap.set(r.oc,r)});
-  const excelRows=[..._ocMap.values()];
+  const excelRows=all.filter(r=>!r.src||r.src==="excel");
   return pendPDFHTML()+pendHTML()+`<div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin-bottom:12px">
       <div class="seg" role="group" aria-label="Vista"><button data-td="oc" aria-pressed="${state.tdMode!=="factura"}">OC recibidas</button><button data-td="factura" aria-pressed="${state.tdMode==="factura"}">Factura</button></div>
       <span class="muted" style="font-size:13px">${state.tdMode!=="factura"?"TD de Facturación Mensual":"Hoja FACTURA, línea por línea"}</span>
@@ -841,7 +840,7 @@ function viewConsolidado(){
     </tbody></table></div></div>`}`;
 }
 function dlFact(){
-  const wb=XLSX.utils.book_new();const rows=factRows();const _dm=new Map();rows.forEach(r=>{if(r.oc&&!_dm.has(r.oc))_dm.set(r.oc,r)});const excelRows=[..._dm.values()];
+  const wb=XLSX.utils.book_new();const rows=factRows();const excelRows=rows.filter(r=>!r.src||r.src==="excel");
   const ws=XLSX.utils.json_to_sheet(rows.map(r=>Object.fromEntries(FCOLS.map(([k,l,t])=>[l,t==="d"?(r[k]?fmtD(r[k]):""):(r[k]??"")]))));
   ws["!cols"]=FCOLS.map(([k,l])=>({wch:k==="producto"?50:Math.max(12,l.length+2)}));XLSX.utils.book_append_sheet(wb,ws,"FACTURA");
   const td=XLSX.utils.aoa_to_sheet(tdAOA(excelRows));td["!cols"]=[{wch:40},...Array(6).fill({wch:14})];XLSX.utils.book_append_sheet(wb,td,"TD DE FACMENSUAL");
