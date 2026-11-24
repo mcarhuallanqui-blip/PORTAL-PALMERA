@@ -1773,7 +1773,7 @@ state.ocs=lsLoad(); try{state.fact=JSON.parse(localStorage.getItem(LS_KEY+"-fact
   }else resolveArea();
   if(db){
     state.db=db; state.mode="db";
-    db.collection("catalogo").doc("costos").onSnapshot(sn=>{state.costos=sn.exists?sn.data():null;if(state.view==="costos"||state.view==="consolidado")render()},()=>{});
+    db.collection("catalogo").doc("costos").onSnapshot(sn=>{state.costos=sn.exists?sn.data():{items:[...COSTOS_DEFAULT]};if(state.view==="costos"||state.view==="consolidado")render()},()=>{});
     db.collection("facturacion").doc("actual").onSnapshot(sn=>{state.fact=sn.exists?sn.data():null;if(state.view==="consolidado")render()},()=>{});
     db.collection("ocs").limit(1000).onSnapshot(snap=>{
       state.ocs=snap.docs.map(d=>({id:d.id,...d.data()}));
