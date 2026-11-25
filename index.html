@@ -926,7 +926,7 @@ Reglas: cantidad en unidades. Si solo hay precio con IGV, divide entre 1.18. Nú
 }
 function findOC(n){n=String(n||"").trim();if(!n)return null;const l=state.ocs.filter(o=>numV(o)===n);return l.find(o=>o.estado!=="Desestimada")||l[0]||null}
 async function nextInvoice(){
-  const f=invQueue.shift(); if(!f){invPreset="";return}
+  const f=invQueue.shift(); if(!f){invPreset="";if(GD.drive&&GD.item){toast("Sincronizando con OneDrive…");graphPush();}return}
   const readingMsg=state.sample?"Toma unos segundos.":"Extrayendo datos del PDF…";
   $("#modal").innerHTML=`<div class="modal-card"><h2 id="modalTitle">Leyendo factura…</h2><p class="muted">${esc(f.name)}${invQueue.length?` · quedan ${invQueue.length} más`:""}. ${readingMsg}</p></div>`;
   $("#modal").classList.add("open");
