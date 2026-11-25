@@ -415,6 +415,7 @@ async function saveOC(oc){
     if(i>=0) state.ocs[i]=oc; else state.ocs.push(oc);
     lsSave(); render();
   }
+  queueSync();
 }
 async function deleteOC(id){
   if(state.db){await state.db.collection("ocs").doc(id).delete()}
@@ -875,6 +876,7 @@ function odPush(){mkBackupWb(true)}
 async function saveFact(f){
   if(state.db){await state.db.collection("facturacion").doc("actual").set(f)}
   else{state.fact=f;try{localStorage.setItem(LS_KEY+"-fact",JSON.stringify(f))}catch(e){};render()}
+  queueSync();
 }
 /* ---------- Agregar factura PDF a FACTURA ---------- */
 const CANAL_OF={"Tambo":"TAMBO","Plaza Vea":"SUPESA","Sodimac":"SODIMAC","Promart":"PROMART"};
@@ -1193,6 +1195,7 @@ async function resolveShareUrl(url){
   localStorage.setItem("palmera-gd-item",d.id);
   return true}catch(e){toast("Error resolviendo URL: "+(e.message||e));return false}
 }
+let _syncT=null;function queueSync(){if(!GD.drive||!GD.item)return;clearTimeout(_syncT);_syncT=setTimeout(graphPush,5000)}
 async function graphSync(btn){
   const b=btn||{disabled:false,textContent:"↻"};
   if(!GD.clientId){gdShowConfig();return}
