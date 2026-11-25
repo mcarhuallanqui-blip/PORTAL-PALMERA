@@ -808,7 +808,7 @@ function pivotHTML(title,rows,dateKey,valKey){
   <tr class="tot"><td>Total general</td>${p.cols.map(c=>`<td class="r num">${num2(tot(c))}</td>`).join("")}<td class="r num">${num2(p.months.reduce((s,k)=>s+rowT(k),0))}</td></tr></tbody></table></div></div>`;
 }
 function pendFact(){const set=new Set(factRows().map(r=>String(r.oc).trim()));return state.ocs.filter(o=>C(o).atencion==="ATENDIDO"&&!o.factura&&!set.has(numV(o))).sort((a,b)=>(C(b).emisionFac||b.entrega||"")>(C(a).emisionFac||a.entrega||"")?1:-1)}
-function pendPDF(){const factSet=new Set(factRows().map(r=>String(r.factura||"").trim()).filter(Boolean));return state.ocs.filter(o=>{const fac=String(o.factura||"").trim();return fac&&!factSet.has(fac)}).sort((a,b)=>(b.entrega||"")>(a.entrega||"")?1:-1)}
+function pendPDF(){const _nf=s=>String(s||"").trim().toUpperCase().replace(/^(F\d{3})-?0*(\d+)$/,(m,a,b)=>a+"-"+b.padStart(6,"0"));const factSet=new Set(factRows().map(r=>_nf(r.factura)).filter(Boolean));return state.ocs.filter(o=>{const fac=_nf(o.factura);return fac&&!factSet.has(fac)}).sort((a,b)=>(b.entrega||"")>(a.entrega||"")?1:-1)}
 function pendHTML(){const l=pendFact();if(!l.length)return"";
   return `<div class="pend"><div class="pend-h"><span class="tag-new">NEW</span><b>${l.length} OC atendida${l.length>1?"s":""} sin factura cargada</b><span class="muted" style="font-size:13px">No suman en FACTURA ni en las tablas hasta que agregues su factura.</span></div>
   <div class="table-wrap"><table><thead><tr><th>Nro O/C</th><th>Canal</th><th>Detalle canal</th><th>Factura N°</th><th>Fec. entrega</th><th class="r">Total OC</th><th></th></tr></thead><tbody>
