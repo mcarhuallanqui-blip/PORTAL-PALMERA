@@ -898,13 +898,32 @@ function parseInvoiceText(text){
   if(m3){const p=m3[1].split(/[\/\-\.]/);if(p.length===3){let y=Number(p[2]);if(y<100)y+=y<50?2000:1900;inv.vencimiento=`${y}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`}}
   const m4=text.match(/(?:orden\s+de\s+compra|OC|N[°º]\s*OC)[:\s#]+(\d{5,12})/i);if(m4)inv.oc=m4[1].trim();
   const cat=Object.keys(catalog());
+  const _nrmC=s=>String(s||"").normalize("NFC").replace(/\s+/g," ").trim().toLowerCase();
   const lines=[];
   for(const prod of cat){const re=new RegExp(prod.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"i");const mo=re.exec(text);if(mo){
     const before=text.slice(Math.max(0,mo.index-100),mo.index);
     const afterName=text.slice(mo.index+mo[0].length,mo.index+mo[0].length+150);
-    const qm=before.match(/(\d{1,5})\s+(?:NIU|UNI?D?|KG|CJ)\b/i)||afterName.match(/(?:Cant[^:]{0,5}:?\s*)(\d+)/i)||before.match(/(?:^|\n)\s*(\d{1,4})\s*$/);
+    const qm=before.match(/(\d{1,5})\s+(?:NIU|ZZ|KGM?|C62|UNI?D?|CJ)\b/i)||afterName.match(/(?:Cant[^:]{0,5}:?\s*)(\d+)/i)||before.match(/(?:^|\n)\s*(\d{1,4})\s*$/);
     const pm=afterName.match(/(\d[\d,.]+)/);
     lines.push({descripcion:prod,producto:prod,cantidad:qm?Number(qm[1]):1,valorUnitario:pm?Number(pm[1].replace(/,/g,".")):0})}}
+  if(!lines.length){
+    const tls=text.split("\n");
+    const hdr=tls.findIndex(r=>/descripci[oó]n/i.test(r)&&(/cant/i.test(r)||/u\.?m\.?/i.test(r)||/unid/i.test(r)));
+    const start=hdr>=0?hdr+1:0;
+    for(let i=start;i<tls.length;i++){
+      const tl=tls[i];
+      const m=tl.match(/^(.{4,80?}?)\s{2,}(\d+(?:[.,]\d{0,4})?)\s{1,5}(NIU|ZZ|KGM?|C62|UNI?D?|CJ|UN)\s{1,5}(\d+(?:[.,]\d{0,4})?)/i);
+      if(m){
+        const desc=m[1].trim();
+        if(desc.length<4||/total|subtotal|igv|impuesto|descuento|^valor|percepc/i.test(desc))continue;
+        const qty=parseFloat(m[2].replace(",","."));
+        const price=parseFloat(m[4].replace(",","."));
+        const dN=_nrmC(desc);
+        const catMatch=cat.find(c=>{const cN=_nrmC(c);return cN.length>3&&(dN.includes(cN)||cN.includes(dN)||cN.split(/\s+/).filter(w=>w.length>3).every(w=>dN.includes(w)))});
+        lines.push({descripcion:desc,producto:catMatch||"",cantidad:qty,valorUnitario:price});
+      }
+    }
+  }
   if(lines.length)inv.items=lines;
   return inv}
 async function readInvoice(file){
